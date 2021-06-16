@@ -1,5 +1,5 @@
 # level2_analysis
 
-Folder for the processing of GROMORA level2 data
+Collection of function to deal with the level2 data from the GROMORA project.
 
-Manager by Hou
+It also contains function for the comparison of these data with different datasets. 
