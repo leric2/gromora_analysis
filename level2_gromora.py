@@ -12,6 +12,8 @@ import pandas as pd
 
 import xarray as xr
 
+from MLS import *
+
 def read_GROMORA(filename, date_slice):
 
     gromora_ds = xr.open_dataset(
@@ -133,7 +135,7 @@ def compare_ts(gromos, somora):
     pl2 = somora.o3_x.where(somora.o3_mr>0.75).mean(dim='time').plot(
         y='o3_p',
         ax=axs[0], 
-        yscale='log',
+       
     )
     axs[0].invert_yaxis()
     axs[0].set_ylabel('P [hPa]')
@@ -155,9 +157,10 @@ def compare_ts(gromos, somora):
 if __name__ == "__main__":
 
     filename_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/full_2018_waccm_cov_yearly_ozone.nc'
+    
     filename_somora = '/storage/tub/instruments/somora/level2/v1/SOMORA2018_06_30_waccm_cov_yearly_ozone.nc'
     
-    date_slice=slice("2018-01-30", "2018-06-22")
+    date_slice=slice("2018-01-01", "2018-10-31")
     gromos = read_GROMORA(filename_gromos, date_slice)
     somora = read_GROMORA(filename_somora, date_slice)
 
