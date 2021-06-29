@@ -249,12 +249,18 @@ def compare_opacity(folder, year=2014, date_slice=slice("2014-01-01", "2014-01-3
     gromos.tropospheric_opacity_tc.plot(
         lw=0,
         marker='.',
-        ms=2,
+        ms=0.5,
+        ax=axs[0]
+    )
+    somora.tropospheric_opacity_tc.plot(
+        lw=0,
+        marker='.',
+        ms=0.5,
         ax=axs[0]
     )
     axs[0].set_ylabel('opacity')
     axs[0].set_ylim((0,2))
-    axs[0].legend(['GROMOS','SOMORA','GROMOS TC'])
+    axs[0].legend(['GROMOS','SOMORA','GROMOS TC', 'SOMORA_TC'])
     gromos.tropospheric_transmittance.resample(time='4H').mean().plot(
         ax=axs[1]
     )
@@ -305,7 +311,7 @@ if __name__ == "__main__":
     # z_grid = np.arange(1e3, 90e3, 1e3)
     # ozone_const_alt = constant_altitude_gromora(gromos, z_grid)
 
-    compare_opacity(folder='/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/',year=2014, date_slice=slice("2014-05-01", "2014-08-31"))
+    compare_opacity(folder='/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/',year=2014, date_slice=slice("2014-01-01", "2014-12-31"))
 
     plot_ozone_ts(gromos, altitude=False)
     # plot_ozone_ts(ozone_const_alt, altitude=True)
