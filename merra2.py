@@ -93,11 +93,11 @@ def plot_merra2(merra2_ds):
     o3_merra2_tot =merra2_ds.O3
     # merra2_ds.sel(datetime=slice("2017-08-15", "2017-12-31"))
     fig, ax = plt.subplots(1, 1)
-    o3_merra2_tot.plot(x='time', y='altitude', ax=ax, vmin=0, vmax=15, cmap=colormap)
+    o3_merra2_tot.plot(x='time', y='altitude', ax=ax, vmin=0, vmax=10, cmap=colormap)
     #ax.set_ylim(5, 75)
     # o3_merra2.assign_coords({'altitude':merra2_info.alt.isel(phony_dim_1=0)})
     plt.tight_layout()
-    #fig.savefig(instrument.level2_folder+'/ozone_ts_17_merra2.pdf')
+    fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/'+'ozone_ts_merra2.pdf')
 
 def plot_merra2_convolved(merra2_convolved):
     fig, axs = plt.subplots(1, 1, sharex=True)
@@ -117,6 +117,9 @@ def plot_merra2_convolved(merra2_convolved):
     axs.invert_yaxis()
     axs.set_ylabel('P [hPa]')
 
+    #fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/'+'ozone_ts_merra2_convolved.pdf')
+
+
 def convolve_merra2(gromora, dataserie):
     mean_avkm = gromora.o3_avkm.mean(dim='time').values
     z_merra= dataserie.altitude.values*1000
@@ -125,6 +128,7 @@ def convolve_merra2(gromora, dataserie):
     for i,t in enumerate(dataserie.time):
         z_gromora = gromora.o3_z.isel(time=i).values
         interpolated_o3 = np.interp(z_gromora, z_merra, dataserie.O3.isel(time=i).values*1e-6)
+        # interpolated_o3[np.argwhere(np.isnan(interpolated_o3))] = 0
         xa = gromora.o3_xa.isel(time=i).values
         o3_convolved[:,i] = xa + np.matmul(mean_avkm,(interpolated_o3 - xa))
     
@@ -140,19 +144,97 @@ def convolve_merra2(gromora, dataserie):
     )
     return ozone_ds_convolved
 
+def compare(gromos,merra2_convolved):
+
+    fig1, axs1 = plt.subplots(2, 1, sharey=True)
+    pl = gromos.o3_x.plot(
+        x='time',
+        y='o3_p',
+        ax=axs1[0], 
+        vmin=0,
+        vmax=10,
+        yscale='log',
+        linewidth=0,
+        rasterized=True,
+        cmap='cividis'
+    )
+    pl.set_edgecolor('face')
+    # ax.set_yscale('log')
+    axs1[0].invert_yaxis()
+    axs1[0].set_ylabel('P [hPa]')
+    axs1[0].set_xticks([])
+    axs1[0].set_title('GROMOS')
+    pl = merra2_convolved.o3_x.plot(
+        x='time',
+        y='o3_p',
+        ax=axs1[1], 
+        vmin=0,
+        vmax=10,
+        yscale='log',
+        linewidth=0,
+        rasterized=True,
+        cmap='cividis'
+    )
+    pl.set_edgecolor('face')
+    # ax.set_yscale('log')
+    axs1[1].invert_yaxis()
+    axs1[1].set_ylabel('P [hPa]')
+
+    for ax in axs1:
+        ax.set_ylim((500,0.1))
+    plt.tight_layout()
+    fig1.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/'+'comparison_merra2_ts.pdf')
+
+    fig, axs = plt.subplots(1, 2, sharey=True)
+    merra2_convolved.o3_x.mean(dim='time').plot(
+        y='o3_p',
+        ax=axs[0], 
+        yscale='log',
+        label='MERRA2, conv'
+    )
+    gromos.o3_x.mean(dim='time').plot(
+        y='o3_p',
+        ax=axs[0], 
+        yscale='log',
+        label='GROMOS'
+    )
+    rel_diff = 100*(gromos.o3_x.mean(dim='time')-merra2_convolved.o3_x.mean(dim='time'))/merra2_convolved.o3_x.mean(dim='time')
+    rel_diff.plot(
+        y='o3_p',
+        ax=axs[1], 
+        yscale='log',
+        label='GROMOS'
+    )
+    axs[1].set_ylim((1e-1,1e2))
+    axs[0].legend()
+    axs[0].invert_yaxis()
+    axs[0].set_ylabel('P [hPa]')
+    axs[1].set_xlim((-20,20))
+    axs[1].set_xlabel('rel diff [%]')
+
+    for ax in axs:
+        ax.grid()
+
+    fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/'+'comparison_merra2.pdf')
+
 if __name__ == "__main__":
     merra2 = read_merra2_BRN(
-        years = [2015,], 
-        months = [1,2,3,4,5,6,7,8,9,10]
+        years = [2016,], 
+        months = [1,2,3]
     )
-    #plot_merra2(merra2)
 
-    filename_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/GROMOS_2015_waccm_cov_yearly_ozone.nc'
+    #o3_merra2 = merra2.O3.where(merra2.altitude<60).data
+    #merra2['O3'].data = o3_merra2
+    plot_merra2(merra2)
 
-    date_slice=slice("2015-01-01", "2015-10-31")
+    filename_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/GROMOS_2016_waccm_monthly_scaled_h2o_ozone.nc'
+
+    date_slice=slice("2016-01-01", "2016-03-31")
     gromos = read_GROMORA(filename_gromos, date_slice)
 
     merra2_convolved = convolve_merra2(gromos, merra2)
-    plot_merra2_convolved(merra2_convolved)
-    plot_ozone_ts(gromos)
+    #plot_merra2_convolved(merra2_convolved)
+    #plot_ozone_ts(gromos)
+
+    compare(gromos,merra2_convolved)
 
