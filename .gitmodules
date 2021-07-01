@@ -1,0 +1,3 @@
+[submodule "GROMORA-harmo"]
+	path = GROMORA-harmo
+	url = https://git.iap.unibe.ch/IAP_MCH/GROMORA-harmo.git
