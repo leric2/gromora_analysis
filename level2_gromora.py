@@ -12,6 +12,8 @@ import pandas as pd
 
 import xarray as xr
 
+from GROMORA_harmo.scripts.retrieval import GROMORA_time
+
 from MLS import *
 
 MONTH_STR = ['Jan', 'Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -107,6 +109,9 @@ def plot_ozone_ts(gromora, altitude=False):
         axs.set_ylabel('P [hPa]')
 
 def compare_ts(gromos, somora):
+
+    year = pd.to_datetime(gromos.time.values[0]).year
+
     fig, axs = plt.subplots(2, 1, sharex=True)
     pl = gromos.o3_x.where(gromos.o3_mr>0.75).plot(
         x='time',
@@ -176,7 +181,7 @@ def compare_ts(gromos, somora):
 
     plt.tight_layout()
 
-    fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/GROMOS_ozone_rel_diff_2018.pdf', dpi=500)
+    fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/GROMOS_ozone_rel_diff_'+str(year)+'.pdf', dpi=500)
 
 def fshift_daily_cycle(ds_fshift, date_slice):
     fshift = ds_fshift.sel(time=date_slice)
@@ -205,6 +210,32 @@ def fshift_daily_cycle(ds_fshift, date_slice):
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
     fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/GROMOS_daily_fshift_'+str(year)+'.pdf', dpi=500)
     
+def utc_to_lst(gromora):
+    lsts = list()
+    for i, t in enumerate(gromora.time.data):
+        #print('from : ',t)
+        lst, ha, sza, night = GROMORA_time.get_LST_from_UTC(t, gromora.obs_lat.data[i], gromora.obs_lon.data[i])
+        #print('to :',lst)
+        lsts.append(lst)
+
+    gromora['time'] = lsts
+    gromora['time'].attrs = {'description':'Local solar time'}
+    return gromora
+
+def compare_pressure(gromos, somora, pressure_level = [15,20,25]):
+    year=pd.to_datetime(gromos.time.data[0]).year
+    fig, axs = plt.subplots(len(pressure_level), 1, sharex=True, figsize=(15,10))
+    for i, p in enumerate(pressure_level):
+        gromos.o3_x.isel(o3_p=p).plot(ax=axs[i], color='b', lw=0.6)
+        somora.o3_x.isel(o3_p=p).plot(ax=axs[i], color='r', lw=0.6)
+        axs[i].set_xlabel('')
+        axs[i].set_title(f'p = {gromos.o3_p.data[p]:.2f} hPa')
+    axs[0].legend(['GROMOS','SOMORA'])
+    for ax in axs:
+        ax.grid()
+    fig.tight_layout(rect=[0, 0.01, 0.95, 1])
+    fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/ozone_comparison_pressure_level_'+str(year)+'.pdf', dpi=500)
+
 
 def plot_fshift_ts(ds_fshift, date_slice, TRoom):
     fig, axs = plt.subplots(2, 1,sharex=True)
@@ -289,29 +320,39 @@ if __name__ == "__main__":
         )
 
     filename_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/GROMOS_2016_waccm_monthly_scaled_h2o_ozone.nc'
+    #filename_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/2018_waccm_cov_yearly_ozone.nc'
 
-    #filename_somora = '/storage/tub/instruments/somora/level2/v1/SOMORA2018_06_30_waccm_cov_yearly_ozone.nc'
+    filename_somora = '/storage/tub/instruments/somora/level2/v1/SOMORA2018_06_30_waccm_cov_yearly_ozone.nc'
+    #filename_gromos='/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/GROMOS2014_03_31_waccm_monthly_scaled_h2o_ozone.nc'
+    filename_somora='/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/SOMORA2016_01_08_waccm_monthly_scaled_h2o_ozone.nc'
     
-    date_slice=slice("2016-01-01", "2016-12-31")
+    date_slice=slice("2016-01-01", "2016-01-08")
     gromos = read_GROMORA(filename_gromos, date_slice)
-    #  somora = read_GROMORA(filename_somora, date_slice)
+    somora = read_GROMORA(filename_somora, date_slice)
 
+    compare_ts(gromos, somora)
+
+    compare_pressure(gromos,somora, pressure_level=[33 ,30, 23, 16,13, 8])
+
+    gromos = utc_to_lst(gromos)
+    
+    plot_ozone_ts(gromos, altitude=False)
     # fshift_daily_cycle(ds_fshift, slice("2018-01-01", "2018-12-31"))
     # fshift_daily_cycle(ds_fshift, slice("2017-01-01", "2017-12-31"))
     # fshift_daily_cycle(ds_fshift, slice("2016-01-01", "2016-12-31"))
     # fshift_daily_cycle(ds_fshift, slice("2014-01-01", "2014-12-31"))
     # fshift_daily_cycle(ds_fshift, slice("2015-01-01", "2015-12-31"))
 
-    plot_fshift_ts(ds_fshift, date_slice = slice("2014-01-01", "2018-12-31"), TRoom=TRoom)
+    #plot_fshift_ts(ds_fshift, date_slice = slice("2014-0-01", "2018-12-31"), TRoom=TRoom)
    # ds_fshift.freq_shift_x.sel(time=slice("2017-01-01", "2018-12-31")).resample(time='12H').mean().plot()
     # plt.matshow(gromos.o3_avkm.isel(time=0))
     # plt.colorbar()
-    # compare_ts(gromos, somora)
+    # 
 
     # z_grid = np.arange(1e3, 90e3, 1e3)
     # ozone_const_alt = constant_altitude_gromora(gromos, z_grid)
 
     compare_opacity(folder='/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/',year=2014, date_slice=slice("2014-01-01", "2014-12-31"))
 
-    plot_ozone_ts(gromos, altitude=False)
+    #plot_ozone_ts(gromos, altitude=False)
     # plot_ozone_ts(ozone_const_alt, altitude=True)
