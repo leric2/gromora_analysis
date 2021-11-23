@@ -4,3 +4,6 @@
 [submodule "GROMORA_harmo"]
 	path = GROMORA_harmo
 	url = https://git.iap.unibe.ch/IAP_MCH/GROMORA-harmo.git
+[submodule "wavelets"]
+	path = wavelets
+	url = https://github.com/chris-torrence/wavelets.git
