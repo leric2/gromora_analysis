@@ -263,16 +263,17 @@ def plot_ts(ts, ax, var, transform=ccrs.PlateCarree()):
     #fig2.savefig(instrument.level2_folder+'/'+'ozone_ts_16_ecmwf_payerne.pdf')
 
 if __name__ == "__main__":
-    date = pd.date_range(start='2019-03-03', end='2019-03-03')
-    basefolder = '/home/esauvageat/Documents/ECMWF/plots/'
+    #date = pd.date_range(start='2019-03-03', end='2019-03-03')
+    basefolder = '/storage/tub/atmosphere/ecmwf/daily_plots/'
     #ecmwf_ds = read_ECMWF( date, 'Bern')
 
     #variable = ['t', 'u', 'v', 'o3', 'q','vo'] # Options are t, q, w, vo, o3, z, u, v
     variable = [temperature, zonal_velocity, meridional_velocity, ozone,humidity,relative_vorticity]
 
-    date=date[0]
+    #date=date[0]
+    date = datetime.datetime.now()-datetime.timedelta(2)
     ecmwf_global = read_ECMWF_global(date)
-    p_levels = [10, 1]
+    p_levels = [100, 10, 1]
 
     for p in p_levels:
         fig, axs = plt.subplots(figsize=(20,10), nrows=2, ncols=3, subplot_kw={'projection': ccrs.Orthographic(central_longitude=7, central_latitude=90, globe=None)})
@@ -306,4 +307,4 @@ if __name__ == "__main__":
         fig2.suptitle('Pressure = ' + str(p)+ ' hPa', fontsize=22)
         fig2.tight_layout(rect=[0, 0.01, 0.99, 1])
         
-        fig2.savefig(basefolder+'ECMWF_overview_'+str(date.year)+str(date.month)+str(date.day)+'_'+str(p)+'hPa'+'.pdf', dpi=500)
+        fig2.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_'+str(date.year)+'_'+str(date.month)+'_'+str(date.day)+'_'+str(p)+'hPa'+'.pdf', dpi=500)
