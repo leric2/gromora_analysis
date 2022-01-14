@@ -4,24 +4,31 @@
 #%%
 import datetime
 import os
+from typing import ValuesView
 
 import matplotlib.pyplot as plt
 import netCDF4
 import numpy as np
 from numpy.lib.shape_base import dsplit
 import pandas as pd
-from typhon import collocations
+from scipy.odr.odrpack import RealData
+from scipy.stats.stats import RepeatedResults
+import typhon
 
 import xarray as xr
+from scipy import stats
+from scipy.odr import *
 
 from GROMORA_harmo.scripts.retrieval import GROMORA_time
-from flags_analysis import read_level1_flags
+from flags_analysis import read_level1_flags, save_single_pdf
 
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 from matplotlib.lines import Line2D
 import matplotlib.ticker as ticker
 import matplotlib
 cmap = matplotlib.cm.get_cmap('plasma')
+
+cmap_ts = 'cividis'
 
 from MLS import *
 from sbuv import *
@@ -38,6 +45,7 @@ plt.rcParams['axes.titlesize'] = 22
 
 color_gromos= '#d7191c'# '#008837'# '#d95f02'
 color_somora= '#2c7bb6' #7b3294' # '#1b9e77'
+sbuv_color= '#fdae61'
 
 MONTH_STR = ['Jan', 'Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -341,6 +349,15 @@ def compare_ts(gromos, somora, freq, date_slice, basefolder):
     gromos['o3'] = gromos.o3_x
     somora['o3'] = somora.o3_x
 
+    # plim_gromos = np.zeros(shape=(len(gromos.time.values),2))
+    # for i in range(len(gromos.time.values)):
+    #     gromos_p_lim = gromos.isel(time=i).o3_p.where(gromos.isel(time=i).o3_mr > 0.8, drop=True).values
+    #     plim_gromos[i,0] = gromos_p_lim[0]
+    # plim_gromos[i,1] = gromos_p_lim[-1]
+    #good_p_somora = somora.o3_x.where(somora.o3_mr > 0.8, drop=True)
+
+    # gromos['mr_lim'] =  plim_gromos
+
     fig, axs = plt.subplots(2, 1, sharex=True, figsize=(38,12))
     pl = gromos.sel(time=date_slice).o3.resample(time=freq).mean().plot(
         x='time',
@@ -351,7 +368,7 @@ def compare_ts(gromos, somora, freq, date_slice, basefolder):
         yscale='log',
         linewidth=0,
         rasterized=True,
-        cmap='cividis',
+        cmap=cmap_ts,
         add_colorbar=False
     )
     pl.set_edgecolor('face')
@@ -369,7 +386,7 @@ def compare_ts(gromos, somora, freq, date_slice, basefolder):
         yscale='log',
         linewidth=0,
         rasterized=True,
-        cmap='cividis',
+        cmap=cmap_ts,
         add_colorbar=False
     )
     pl2.set_edgecolor('face')
@@ -379,9 +396,14 @@ def compare_ts(gromos, somora, freq, date_slice, basefolder):
     axs[1].set_title('SOMORA', fontsize=fs+2)
 
     cbaxes = fig.add_axes([0.92, 0.25, 0.02, 0.5]) 
-    cb = plt.colorbar(pl, cax=cbaxes, orientation="vertical", pad=0.0)
+   # cb = plt.colorbar(pl, cax=cbaxes, orientation="vertical", pad=0.0)
+    cb = fig.colorbar(pl, cax=cbaxes, orientation="vertical", pad=0.0)
     cb.set_label(label=r"O$_3$ [ppmv]", weight='bold', fontsize=fs)
     cb.ax.tick_params()
+
+    # good_p_somora[:,0].plot(ax=axs[0], color='white')
+
+
 
     for ax in axs:
         ax.set_ylim(100, 1e-2)
@@ -483,11 +505,12 @@ def compare_with_apriori(gromos, freq, date_slice, basefolder):
 
     fig.savefig(basefolder+'apriori_comparison'+str(year)+'.pdf', dpi=500)
 
-def compare_ts_MLS(gromos, somora, date_slice, freq, basefolder, sbuv=None):
+def compare_ts_MLS(gromos, somora, date_slice, freq, basefolder, ds_mls=None, sbuv=None):
     fs = 16
     year = pd.to_datetime(gromos.time.values[0]).year
 
-    ds_mls= read_MLS(date_slice)
+    if ds_mls is None:
+        ds_mls= read_MLS(date_slice, vers=5)
 
     fig, axs = plt.subplots(4, 1, sharex=True, figsize=(25,12))
     pl = gromos.sel(time=date_slice).o3_x.where(gromos.o3_mr>0.75).resample(time=freq).mean().plot(
@@ -600,7 +623,7 @@ def utc_to_lst(gromora):
     sunset = list()
     for i, t in enumerate(gromora.time.data):
         #print('from : ',t)
-        lst, ha, sza, night = GROMORA_time.get_LST_from_UTC(t, gromora.obs_lat.data[i], gromora.obs_lon.data[i])
+        lst, ha, sza, night, tc= GROMORA_time.get_LST_from_GROMORA(t, gromora.obs_lat.data[i], gromora.obs_lon.data[i])
         #print('to :',lst)
         lsts.append(lst)
 
@@ -672,15 +695,15 @@ def compare_pressure(gromos, somora, pressure_level = [15,20,25], add_sun=False,
     fig.tight_layout(rect=[0, 0.01, 0.99, 1])
     fig.savefig(basefolder+'ozone_comparison_pressure_level_'+str(year)+'.pdf', dpi=500)
 
-def compare_pressure_mls_sbuv(gromos, somora, mls, sbuv, pressure_level = [15,20,25], add_sun=False, freq='1D',basefolder=''):
+def compare_pressure_mls_sbuv(gromos, somora, mls, sbuv, pressure_level = [10, 15,20,25,30], add_sun=False, freq='1D',basefolder=''):
     fs=22
     year=pd.to_datetime(gromos.time.data[0]).year
     fig, axs = plt.subplots(len(pressure_level), 1, sharex=True, figsize=(25,12))
     for i, p_ind in enumerate(pressure_level):
         pressure =  gromos.o3_p.data[p_ind]
         mls.o3.sel(p=pressure, method='nearest', tolerance=0.4*pressure).resample(time=freq).mean().plot(ax=axs[i], color='k', lw=1.5)
-        if pressure > 0.4:
-            sbuv.ozone.sel(p=pressure, method='nearest', tolerance=0.4*pressure).resample(time=freq).mean().plot(ax=axs[i], color='#fdae61', lw=1.5)
+        if (pressure > 0.4) & (pressure<50) & (sbuv is not None):
+            sbuv.ozone.sel(p=pressure, method='nearest', tolerance=0.4*pressure).resample(time=freq).mean().plot(ax=axs[i], color=sbuv_color, lw=1.5)
         gromos.o3_x.isel(o3_p=p_ind).resample(time=freq).mean().plot(ax=axs[i], color=color_gromos, lw=1.5)
         somora.o3_x.isel(o3_p=p_ind).resample(time=freq).mean().plot(ax=axs[i], color=color_somora, lw=1.5)
         axs[i].set_xlabel('')
@@ -741,25 +764,88 @@ def map_rel_diff(gromos, somora ,freq='12H', basefolder=''):
     axs.set_xlabel('')
     axs.set_ylabel('Pressure [hPa]',fontsize=fs)
 
-    axs.set_ylim(25,0.5)
-    axs.set_title('Monthly relative diff GROMOS-SOMORA', fontsize=fs+4)
+    axs.set_ylim(100,0.01)
+    axs.set_title(freq+' relative diff GROMOS-SOMORA', fontsize=fs+4)
     axs.tick_params(axis='both', which='major', labelsize=fs-2)
     axs.grid()
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
     fig.savefig(basefolder+'ozone_rel_diff_'+str(year)+'.pdf', dpi=500)
 
-def compute_correlation(gromos, somora, freq='1D', pressure_level = [15,20,25], basefolder=''):
+def linear(p, x):
+    m, c = p
+    return m*x+c
+
+def regression_xy(x, y, x_err, y_err, lin=True):
+    if lin:
+        lin_model = Model(linear)
+    else:
+        print('Linear regression only')
+    
+    data = RealData(x, y, sx=x_err, sy=y_err)
+    
+   # odr = ODR(data, lin_model, beta0=[1.,0.])
+    odr_obj = ODR(data, scipy.odr.unilinear, beta0=[1.,0.])
+
+    result = odr_obj.run()
+   # result.pprint()
+
+    x_fit = np.linspace(min(x), max(x), 1000)
+    y_fit = linear(result.beta, x_fit)
+
+    chi_squared = np.sum(np.divide(np.square(y - result.beta[0] - result.beta[1]*x),(x_err**2 + np.square(result.beta[1]*y_err))))
+
+    # plt.errorbar(x, y, xerr=x_err, yerr=y_err, linestyle='None', marker='.')
+    # plt.plot(x_fit, y_fit)
+
+    # plt.show()
+
+    return result, chi_squared
+
+def compute_correlation(gromos, somora, freq='1M', pressure_level = [15,20,25], basefolder='', MLS = False):
     year=pd.to_datetime(gromos.time.data[0]).year
     fs=24
     
     fig, axs = plt.subplots(len(pressure_level),1,figsize=(6, 6*len(pressure_level)))
+    error_gromos = np.sqrt( np.square(gromos.o3_eo) + np.square(gromos.o3_es))
+    if MLS:
+        error_somora = 1e-6*0.1*somora.o3_x
+    else:
+        error_somora  = np.sqrt( np.square(somora.o3_eo) + np.square(somora.o3_es))
 
     #ds_o3_gromora=xr.merge(({'o3_gromos':gromos.o3_x.isel(o3_p=p).resample(time=freq).mean()},{'o3_somora':somora.o3_x.isel(o3_p=p).resample(time=freq).mean()}))
-    ds_o3_gromora=xr.merge(({'o3_gromos':gromos.o3_x.resample(time=freq).mean()},{'o3_somora':somora.o3_x.resample(time=freq).mean()}))
-    #ds_o3_gromora_plot = ds_o3_gromora.isel(o3_p=pressure_level)
+    
+    if freq == 'OG':
+        ds_o3_gromora=xr.merge((
+            {'o3_gromos':gromos.o3_x},
+            {'o3_somora':somora.o3_x},
+            {'error_gromos':error_gromos},
+            {'error_somora':error_somora},
+            ))
+    else:
+        ds_o3_gromora=xr.merge((
+            {'o3_gromos':gromos.o3_x.resample(time=freq).mean()},
+            {'o3_somora':somora.o3_x.resample(time=freq).mean()},
+            {'error_gromos':error_gromos.resample(time=freq).mean()},
+            {'error_somora':error_somora.resample(time=freq).mean()},
+            ))
     for i, p in enumerate(pressure_level): 
-        pearson_corr = xr.corr(ds_o3_gromora.isel(o3_p=p).o3_gromos.interpolate_na(dim='time',fill_value="extrapolate"),ds_o3_gromora.isel(o3_p=p).o3_somora.interpolate_na(dim='time',fill_value="extrapolate"), dim='time')
-        print('Pearson corr coef: ',pearson_corr)
+        x = ds_o3_gromora.isel(o3_p=p).o3_gromos.interpolate_na(dim='time',fill_value="extrapolate")
+        y = ds_o3_gromora.isel(o3_p=p).o3_somora.interpolate_na(dim='time',fill_value="extrapolate")
+        pearson_corr = xr.corr(x,y, dim='time')
+        print('Pearson corr coef: ',pearson_corr.values)
+        xerr = 1e6*ds_o3_gromora.isel(o3_p=p).error_gromos.interpolate_na(dim='time',fill_value="extrapolate")
+        yerr = 1e6*ds_o3_gromora.isel(o3_p=p).error_somora.interpolate_na(dim='time',fill_value="extrapolate")
+        result, chi2 = regression_xy(#stats.linregress(
+            x.values, y.values, x_err = xerr.values, y_err=yerr.values
+        )
+        print('Reduced chi2: ',chi2/(len(x.values)-2))
+        print('Sum of square ', result.sum_square)
+        print('Slope ', result.beta[0], ' +- ', result.sd_beta[0] )
+        print('Intercept ', result.beta[1], ' +- ', result.sd_beta[1] )
+
+        coeff_determination = calcR2_wikipedia(y.values, result.beta[1] + result.beta[0] * x.values)
+        #print('r2: ',result.rvalue**2)
+        print('R2: ',coeff_determination)
         ds_o3_gromora.isel(o3_p=p).plot.scatter(
             ax=axs[i],
             x='o3_gromos', 
@@ -767,25 +853,31 @@ def compute_correlation(gromos, somora, freq='1D', pressure_level = [15,20,25], 
             color='k',
             marker='.'
         )
-        axs[i].plot([min(ds_o3_gromora.isel(o3_p=p).o3_gromos.values),max(ds_o3_gromora.isel(o3_p=p).o3_gromos.values)],[min(ds_o3_gromora.isel(o3_p=p).o3_gromos.values), max(ds_o3_gromora.isel(o3_p=p).o3_gromos.values)],'k--')
+        axs[i].plot([np.nanmin(ds_o3_gromora.isel(o3_p=p).o3_gromos.values),np.nanmax(ds_o3_gromora.isel(o3_p=p).o3_gromos.values)],[np.nanmin(ds_o3_gromora.isel(o3_p=p).o3_gromos.values), np.nanmax(ds_o3_gromora.isel(o3_p=p).o3_gromos.values)],'k--')
+     #   axs[i].errorbar(x, y, xerr=xerr, yerr=yerr, color='k', linestyle='None', marker='.') 
+        axs[i].plot(x,y, '.', color='k') 
+        axs[i].plot(x, result.beta[1]  + result.beta[0] * x, color='red') 
         axs[i].set_xlabel(r'GROMOS O$_3$ [ppmv]', fontsize=fs-2)
-        axs[i].set_ylabel(r'SOMORA O$_3$ [ppmv]', fontsize=fs-2)
+        if MLS:
+            axs[i].set_ylabel(r'MLS O$_3$ [ppmv]', fontsize=fs-2)
+        else:
+            axs[i].set_ylabel(r'SOMORA O$_3$ [ppmv]', fontsize=fs-2)
         axs[i].set_title(r'O$_3$ VMR '+f'at p = {gromos.o3_p.data[p]:.3f} hPa')
-        axs[i].set_xlim(min(ds_o3_gromora.isel(o3_p=p).o3_gromos.values),max(ds_o3_gromora.isel(o3_p=p).o3_gromos.values))
-        axs[i].set_ylim(min(ds_o3_gromora.isel(o3_p=p).o3_gromos.values),max(ds_o3_gromora.isel(o3_p=p).o3_gromos.values))
+        axs[i].set_xlim(np.nanmin(ds_o3_gromora.isel(o3_p=p).o3_gromos.values),np.nanmax(ds_o3_gromora.isel(o3_p=p).o3_gromos.values))
+        axs[i].set_ylim(np.nanmin(ds_o3_gromora.isel(o3_p=p).o3_gromos.values),np.nanmax(ds_o3_gromora.isel(o3_p=p).o3_gromos.values))
         axs[i].xaxis.set_major_locator(MultipleLocator(1))
         axs[i].xaxis.set_minor_locator(MultipleLocator(0.5))
         axs[i].yaxis.set_major_locator(MultipleLocator(1))
         axs[i].yaxis.set_minor_locator(MultipleLocator(0.5))
-        axs[i].text(
-            0.65,
-            0.1,
-            r'$\rho = {:.2g}$'.format(pearson_corr.data),
-            transform=axs[i].transAxes,
-            verticalalignment="bottom",
-            horizontalalignment="left",
-            fontsize=fs
-    )
+    #     axs[i].text(
+    #         0.65,
+    #         0.1,
+    #         '$R^2 = {:.3f}$, \n $m ={:.2f} $'.format(result.rvalue**2, result.slope),
+    #         transform=axs[i].transAxes,
+    #         verticalalignment="bottom",
+    #         horizontalalignment="left",
+    #         fontsize=fs
+    # )
     
     for ax in axs:
         ax.grid(which='both', axis='x')
@@ -793,20 +885,175 @@ def compute_correlation(gromos, somora, freq='1D', pressure_level = [15,20,25], 
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
     fig.savefig(basefolder+'ozone_scatter_'+freq+'_'+str(year)+'.pdf', dpi=500)
 
+def compute_seasonal_correlation(gromos, somora, freq='1M', pressure_level = [15,20,25], basefolder='', MLS = False, split_by ='season'):
+    year=pd.to_datetime(gromos.time.data[0]).year
+    fs=18
+    figure_list = list()
+    fig1, axs1 = plt.subplots(1,2, sharey=True, figsize=(10, 10))
+    fig, axs = plt.subplots(len(pressure_level),4,figsize=(20, 6*len(pressure_level)))
+    error_gromos = np.sqrt( np.square(gromos.o3_eo) + np.square(gromos.o3_es))
+    if MLS:
+        error_somora = 1e-6*0.1*somora.o3_x
+    else:
+        error_somora  = np.sqrt( np.square(somora.o3_eo) + np.square(somora.o3_es))
+
+    #ds_o3_gromora=xr.merge(({'o3_gromos':gromos.o3_x.isel(o3_p=p).resample(time=freq).mean()},{'o3_somora':somora.o3_x.isel(o3_p=p).resample(time=freq).mean()}))
+    ds_o3_gromora=xr.merge((
+        {'o3_gromos':gromos.o3_x.resample(time=freq).median()},
+        {'o3_somora':somora.o3_x.resample(time=freq).median()},
+        {'error_gromos':error_gromos.resample(time=freq).median()},
+        {'error_somora':error_somora.resample(time=freq).median()},
+        ))
+
+    #season = ['DJF','MAM', 'JJA', 'SON']
+    color_season = ['r', 'b', 'y', 'g']
+    ds_o3_gromora_groups = ds_o3_gromora.groupby('time.season').groups
+    #ds_o3_gromora_plot = ds_o3_gromora.isel(o3_p=pressure_level)
+    
+    for j, s in enumerate(ds_o3_gromora_groups):
+        print('Processing season ', s)
+        ds = ds_o3_gromora.isel(time=ds_o3_gromora_groups[s]).interpolate_na(dim='time',fill_value="extrapolate")
+        pearson_corr_profile = xr.corr(ds.o3_gromos, ds.o3_somora, dim='time')
+
+        ds.o3_gromos.mean(dim='time').plot(
+            ax=axs1[0],
+            y='o3_p',
+            yscale='log',
+            color=color_season[j],
+            marker='o'
+            ) 
+        ds.o3_somora.mean(dim='time').plot(
+            ax=axs1[0],
+            y='o3_p',
+            color=color_season[j],
+            marker='x'
+            ) 
+  
+        pearson_corr_profile.plot(
+            ax=axs1[1],
+            y='o3_p',
+            color=color_season[j]
+        )
+
+        for i, p in enumerate(pressure_level):
+            x = ds.isel(o3_p=p).o3_gromos
+            y = ds.isel(o3_p=p).o3_somora
+        
+            pearson_corr = xr.corr(x,y, dim='time')
+            print('Pearson corr coef: ',pearson_corr.values)
+            xerr = 1e6*ds.isel(o3_p=p).error_gromos
+            yerr = 1e6*ds.isel(o3_p=p).error_somora
+            result, chi2 = regression_xy(#stats.linregress(
+                x.values, y.values, x_err = xerr.values, y_err=yerr.values
+            )
+            print('Reduced chi2: ',chi2/(len(x.values)-2))
+            print('Sum of square ', result.sum_square)
+            print('Slope ', result.beta[0], ' +- ', result.sd_beta[0] )
+            print('Intercept ', result.beta[1], ' +- ', result.sd_beta[1] )
+
+            coeff_determination = calcR2_wikipedia(y.values, result.beta[1] + result.beta[0] * x.values)
+            #print('r2: ',result.rvalue**2)
+            print('R2: ',coeff_determination)
+            ds.isel(o3_p=p).plot.scatter(
+                ax=axs[i,j],
+                x='o3_gromos', 
+                y='o3_somora',
+                color='k',
+                marker='.'
+            )
+            axs[i,j].plot([np.nanmin(ds.isel(o3_p=p).o3_gromos.values),np.nanmax(ds.isel(o3_p=p).o3_gromos.values)],[np.nanmin(ds.isel(o3_p=p).o3_gromos.values), np.nanmax(ds.isel(o3_p=p).o3_gromos.values)],'k--')
+            #axs[i,j].errorbar(x, y, xerr=xerr, yerr=yerr, color=color_season[j], linestyle='None', marker='.') 
+      #      axs[i].plot(x,y, '.', color='k') 
+            axs[i,j].plot(x, result.beta[1]  + result.beta[0] * x, color='red') 
+            axs[i,j].set_xlabel(r'GROMOS O$_3$ [ppmv]', fontsize=fs-2)
+            axs[i,j].set_ylabel(r'SOMORA O$_3$ [ppmv]', fontsize=fs-2)
+            axs[i,j].set_title(r'O$_3$ VMR, '+s)
+            axs[i,j].set_xlim(np.nanmin(ds.isel(o3_p=p).o3_gromos.values),np.nanmax(ds.isel(o3_p=p).o3_gromos.values))
+            axs[i,j].set_ylim(np.nanmin(ds.isel(o3_p=p).o3_gromos.values),np.nanmax(ds.isel(o3_p=p).o3_gromos.values))
+            axs[i,j].xaxis.set_major_locator(MultipleLocator(1))
+            axs[i,j].xaxis.set_minor_locator(MultipleLocator(0.5))
+            axs[i,j].yaxis.set_major_locator(MultipleLocator(1))
+            axs[i,j].yaxis.set_minor_locator(MultipleLocator(0.5))
+            axs[i,j].text(
+                0.65,
+                0.1,
+                '$p={:.1f}$ hPa \n$m ={:.2f}$'.format(gromos.o3_p.data[p], result.beta[0]),
+               # '$p={:.1f}$ hPa \n$R^2 = {:.3f}$, \n$m ={:.2f}$'.format(gromos.o3_p.data[p], coeff_determination, result.beta[0]),
+                transform=axs[i,j].transAxes,
+                verticalalignment="bottom",
+                horizontalalignment="left",
+                fontsize=fs
+                )
+    
+    # for ax in axs:
+    #     ax.grid(which='both', axis='x')
+    #     ax.grid(which='both', axis='y')
+    fig.tight_layout(rect=[0, 0.01, 0.95, 1])
+        
+    axs1[0].invert_yaxis()
+    axs1[0].set_xlim(0,10)
+    axs1[1].set_xlim(0,1)
+    axs1[1].set_title('Pearson correlation')
+
+    figure_list.append(fig1)
+    figure_list.append(fig)
+    save_single_pdf(basefolder+'seasonal_ozone_regression_'+freq+'_'+str(year)+'.pdf',figure_list)
+    #fig.savefig(basefolder+'ozone_scatter_'+freq+'_'+str(year)+'.pdf', dpi=500)
+
+def coefficient_determination(y, y_pred):
+    SST = np.sum((y - np.mean(y))**2)
+    SSReg = np.sum((y_pred - np.mean(y))**2)
+    R2 = SSReg/SST
+    return R2
+
+def calcR2_wikipedia(y, y_pred):
+    # Mean value of the observed data y.
+    y_mean = np.mean(y)
+    # Total sum of squares.
+    SS_tot = np.sum((y - y_mean)**2)
+    # Residual sum of squares.
+    SS_res = np.sum((y - y_pred)**2)
+    # Coefficient of determination.
+    R2 = 1.0 - (SS_res / SS_tot)
+    return R2
+
 def compute_corr_profile(gromos, somora, freq='1D', basefolder=''):
     year=pd.to_datetime(gromos.time.data[0]).year
     fs=24
-    
-    fig, axs = plt.subplots(1,1,figsize=(12,12))
-    pearson_corr = xr.corr(gromos.o3_x.resample(time=freq).mean().interpolate_na(dim='time',fill_value="extrapolate"),somora.o3_x.resample(time=freq).mean().interpolate_na(dim='time',fill_value="extrapolate"), dim='time')
+    x = gromos.o3_x.resample(time=freq).median().interpolate_na(dim='time',fill_value="extrapolate")
+    y = somora.o3_x.resample(time=freq).median().interpolate_na(dim='time',fill_value="extrapolate")
+    slopes = np.zeros(len(gromos.o3_p.values))
+    rsqared = np.zeros(len(gromos.o3_p.values))
+    for i, p in enumerate(gromos.o3_p.values): 
+        x_p = x.sel(o3_p=p).values
+        y_p = y.sel(o3_p=p).values
+        result = stats.linregress(
+            x_p, y_p
+        )
+        slopes[i] = result.slope 
+        rsqared[i] = result.rvalue**2
+        
+
+    fig, axs = plt.subplots(1,3,sharey=True,figsize=(12,12))
+    pearson_corr = xr.corr(x,y, dim='time')
+    axs[1].plot(slopes, x.o3_p.values) 
+    axs[2].plot(rsqared, x.o3_p.values) 
     pearson_corr.plot(
-        ax=axs,
+        ax=axs[0],
         y='o3_p',
         yscale='log',
     )
-    axs.invert_yaxis()
-    axs.set_xlim(0,1)
-    axs.grid()
+    axs[1].invert_yaxis()
+    axs[0].set_xlim(0,1)
+    axs[0].set_title('Pearson correlation')
+
+    axs[1].set_title('Slopes')
+    axs[1].set_xlim(-1.5,1.5)
+    axs[2].set_title('$R^2$')
+    axs[2].set_xlim(0,1)
+    for ax in axs:
+        ax.grid()
+    fig.savefig(basefolder+'ozone_corr_profile_'+freq+'_'+str(year)+'.pdf', dpi=500) 
 
 def compare_diff_daily(gromos, somora,gromora_old, pressure_level = [15,20,25], altitudes = [15,20,25]):
     year=pd.to_datetime(gromos.time.data[0]).year
@@ -834,7 +1081,7 @@ def compare_diff_daily(gromos, somora,gromora_old, pressure_level = [15,20,25], 
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
     fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/ozone_comparison_old_vs_new_AVK_smoothed'+str(year)+'.pdf', dpi=500)
 
-def gromos_old_vs_new(gromos, gromos_v2021):
+def gromos_old_vs_new(gromos, gromos_v2021, mls, seasonal = True):
     year=pd.to_datetime(gromos.time.data[0]).year
     fig, axs = plt.subplots(2, 1, sharex=True, sharey=True, figsize=(10,10))
 
@@ -875,6 +1122,92 @@ def gromos_old_vs_new(gromos, gromos_v2021):
     #fig.suptitle('Ozone relative difference GROMOS new-old')
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
     fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/gromos_old_vs_new_'+str(year)+'.pdf', dpi=500)
+
+    if seasonal:
+        gromora_groups = gromos.groupby('time.season').groups
+        mls_groups = mls.groupby('time.season').groups
+        gromos_v2021_groups = gromos_v2021.groupby('time.season').groups
+        #ds_o3_gromora_plot = ds_o3_gromora.isel(o3_p=pressure_leel)
+        
+        color_season = ['r', 'b', 'y', 'g']
+        fig, axs = plt.subplots(1, 4, sharex=True, sharey=True, figsize=(10,10))
+        for j, s in enumerate(gromora_groups):
+            print('Processing season ', s)
+            gromos.isel(time=gromora_groups[s]).mean(dim='time').o3_x.plot(ax=axs[j] , y='o3_p', color=color_gromos, label='new')
+            mls.isel(time=mls_groups[s]).mean(dim='time').o3.plot(ax=axs[j], y='p', color='k', label='MLS')
+            gromos_v2021.isel(time=gromos_v2021_groups[s]).o3_x.mean(dim='time').plot(ax=axs[j], y='pressure', color=color_somora, label='old')
+            axs[j].set_title(s)
+        axs[0].invert_yaxis()
+        axs[0].set_ylim(200,0.005)
+        axs[0].set_yscale('log')   
+        axs[3].legend() 
+        for ax in axs:
+            ax.grid()
+        fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/gromos_old_vs_new_seasonal_'+str(year)+'.pdf', dpi=500)
+    else:
+        o3_gromos = gromos.o3_x.mean(dim='time')
+        o3_gromos_old = gromos_v2021.o3_x.mean(dim='time').interp(pressure=o3_gromos.o3_p)
+        o3_mls = mls.o3.mean(dim='time').interp(p=o3_gromos.o3_p)
+        
+        diff_new = 100*(o3_gromos-o3_mls)/o3_mls
+        diff_old = 100*(o3_gromos_old-o3_mls)/o3_mls
+        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,10))
+        o3_mls.plot(ax=axs[0] , y='o3_p', color='k', label='MLS')
+        o3_gromos.plot(ax=axs[0] , y='o3_p', color=color_gromos, label='new')
+        o3_gromos_old.plot(ax=axs[0] , y='o3_p', color=color_somora, label='old')
+        diff_new.plot(ax=axs[1] , y='o3_p', color=color_gromos, label='new')
+        diff_old.plot(ax=axs[1] , y='o3_p', color=color_somora, label='old')
+        axs[0].invert_yaxis()
+        axs[0].set_ylim(200,0.005)
+        axs[0].set_yscale('log')  
+        axs[1].set_xlim(-50,50)
+        axs[1].legend()
+        fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/gromos_old_vs_mean_diff_'+str(year)+'.pdf', dpi=500)
+
+        freq='1M'
+        fig2, axs2 = plt.subplots(2, 1, sharey=True, sharex=True, figsize=(10,10))
+        o3_gromos = gromos.o3_x.resample(time=freq).mean()
+        o3_gromos_old = gromos_v2021.o3_x.resample(time=freq).mean().interp(pressure=o3_gromos.o3_p)
+        o3_gromos_old_2 = gromos_v2021.o3_x.resample(time=freq).mean()
+        o3_mls_interp_old= mls.o3.resample(time=freq).mean().interp(p=o3_gromos_old_2.pressure)
+        o3_mls = mls.o3.resample(time=freq).mean().interp(p=o3_gromos.o3_p)
+        diff_new = (o3_gromos-o3_mls)
+        diff_old = (o3_gromos_old_2-o3_mls_interp_old)
+        pl = diff_new.plot(
+            x='time',
+            y='o3_p',
+            ax=axs2[0], 
+            vmin=-1,
+            vmax=1,
+            yscale='log',
+            linewidth=0,
+            rasterized=True,
+            cmap='coolwarm'
+        )
+        axs2[0].set_title('New vs MLS')
+        pl.set_edgecolor('face')
+        # ax.set_yscale('log')   
+        pl = diff_old.plot(
+            x='time',
+            y='pressure',
+            ax=axs2[1], 
+            vmin=-1,
+            vmax=1,
+            yscale='log',
+            linewidth=0,
+            rasterized=True,
+            cmap='coolwarm'
+        )
+        axs2[0].invert_yaxis()
+        axs2[1].set_title('Old vs MLS')
+        axs2[0].set_ylim(100,0.01)
+
+        for ax in axs2:
+            ax.set_xlabel('')
+            ax.set_ylabel('P [hPa]')
+        fig2.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/gromos_old_vs_diff_'+str(year)+'.pdf', dpi=500)
+
+
 
 def plot_o3_pressure_profile(gromos):
     fig, ax = plt.subplots(1, 1, figsize=(8,12))
@@ -973,6 +1306,78 @@ def compare_mean_diff(gromos, somora, sbuv=None):
     #fig.suptitle('Ozone relative difference GROMOS-SOMORA')
     fig.tight_layout(rect=[0, 0.01, 0.99, 1])
     fig.savefig('/scratch/GROSOM/Level2/GROMORA_waccm/rel_diff'+str(year)+'.pdf', dpi=500)
+
+def compare_mean_diff_monthly(gromos, somora, mls=None, sbuv=None):
+    color_shading='grey'
+    fs = 22
+    year=pd.to_datetime(gromos.time.data[0]).year
+
+    monthly_gromos = gromos.groupby('time.month').mean()
+    monthly_somora = somora.groupby('time.month').mean()
+    monthly_mls = mls.groupby('time.month').mean()
+    monthly_sbuv = sbuv.groupby('time.month').mean()
+
+    figure = list()
+    for i in range(len(monthly_gromos.month)):
+        fig, axs = plt.subplots(1, 1, sharey=True, figsize=(8,12))
+        
+        mr_somora = monthly_somora.isel(month=i).o3_mr.data
+        mr_gromos = monthly_gromos.isel(month=i).o3_mr.data
+        p_somora_mr = monthly_somora.isel(month=i).o3_p.data[mr_somora>=0.8]
+        p_gromos_mr = monthly_gromos.isel(month=i).o3_p.data[mr_gromos>=0.8]
+
+        monthly_somora.isel(month=i).o3_x.plot(
+            y='o3_p',
+            ax=axs, 
+            yscale='log',
+            color=color_somora
+        )
+        monthly_gromos.isel(month=i).o3_x.plot(
+            y='o3_p',
+            ax=axs, 
+            color=color_gromos
+        )
+        
+        monthly_sbuv.isel(month=i).ozone.plot(
+            y='p',
+            ax=axs, 
+            color=sbuv_color
+        )     
+        monthly_mls.isel(month=i).o3.plot(
+            y='p',
+            ax=axs, 
+            color='k'
+        )
+
+        axs.set_title(r'O$_3$ VMR, '+MONTH_STR[i], fontsize=fs+4)
+        axs.set_xlabel('VMR [ppmv]', fontsize=fs)
+
+
+        axs.legend(('SOMORA','GROMOS','SBUV','MLS'))
+        #axs[0].legend(('SB corr','OG'))
+        axs.invert_yaxis()
+        axs.set_xlim(-0.2, 9)
+        axs.set_ylabel('Pressure [hPa]', fontsize=fs)
+        axs.set_ylim(100, 0.01)
+        axs.xaxis.set_major_locator(MultipleLocator(4))
+        axs.xaxis.set_minor_locator(MultipleLocator(1))
+        #axs[1].set_ylim((somora.o3_z.mean(dim='time')[12]/1e3,somora.o3_z.mean(dim='time')[35]/1e3))
+
+        axs.grid(which='both', axis='y', linewidth=0.5)
+        axs.grid(which='both', axis='x', linewidth=0.5)
+        axs.tick_params(axis='both', which='major', labelsize=fs-2)
+        axs.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+        axs.fill_between(axs.get_xlim(),p_somora_mr[0],1e4, color=color_shading, alpha=0.2)
+        axs.fill_between(axs.get_xlim(),p_somora_mr[-1],1e-4, color=color_shading, alpha=0.2)
+        axs.fill_between(axs.get_xlim(),p_gromos_mr[0],1e4, color=color_shading, alpha=0.2)
+        axs.fill_between(axs.get_xlim(),p_gromos_mr[-1],1e-4, color=color_shading, alpha=0.2)
+        fig.tight_layout(rect=[0, 0.01, 0.99, 1])
+    
+        figure.append(fig)
+    save_single_pdf('/scratch/GROSOM/Level2/GROMORA_waccm/monthly_mean_comparison_mls_sbuv_'+str(year)+'.pdf', figure)
+    #fig.suptitle('Ozone relative difference GROMOS-SOMORA')
+    
+    #fig.savefig('/scratch/GROSOM/Level2/GROMORA_waccm/rel_diff'+str(year)+'.pdf', dpi=500)
 
 # def compare_mean_diff(gromos, somora, gromora_old):
 #     year=pd.to_datetime(gromos.time.data[0]).year
@@ -1307,7 +1712,7 @@ def read_opacity(folder, year=2014):
         )
     return gromos_opacity, somora_opacity
 
-def read_level1(folder, filename):
+def read_level1(folder, filename, dateslice):
     level1 = xr.open_dataset(
         os.path.join(folder,filename),
         #group='spectrometer1',
@@ -1315,7 +1720,7 @@ def read_level1(folder, filename):
         decode_coords=True,
         # use_cftime=True,
     )
-    return level1
+    return level1.sel(time=dateslice)
 
 def compare_opacity(folder, year=2014, date_slice=slice("2014-01-01", "2014-01-31")):
     gromos_opacity, somora_opacity = read_opacity(folder, year=year)
@@ -1331,14 +1736,14 @@ def compare_opacity(folder, year=2014, date_slice=slice("2014-01-01", "2014-01-3
         ax=axs[0]
     )
     if year>2013:
-        gromos_opacity.tropospheric_opacity_tc.plot(
-            lw=0,
+        gromos_opacity.tropospheric_opacity_tc.resample(time='4H').mean().plot(
+            lw=0.5,
             marker='.',
             ms=0.5,
             ax=axs[0]
         )
-        somora_opacity.tropospheric_opacity_tc.plot(
-            lw=0,
+        somora_opacity.tropospheric_opacity_tc.resample(time='4H').mean().plot(
+            lw=0.5,
             marker='.',
             ms=0.5,
             ax=axs[0]
@@ -1371,9 +1776,7 @@ def compare_opacity(folder, year=2014, date_slice=slice("2014-01-01", "2014-01-3
 
 
 if __name__ == "__main__":
-    instrument = 'GROMOS'
-   # ds_fshift = read_plot_fshift(basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/',instrument_name=instrument,years=[2015, 2016, 2017, 2018, 2019])
-    
+
     ds_fshift = read_fshift_nc(basename='/scratch/GROSOM/Level2/GROMORA_waccm/GROMOS_',years=[2016])
 
 
@@ -1394,38 +1797,38 @@ if __name__ == "__main__":
     filename_somora='/scratch/GROSOM/Level2/GROMORA_waccm/SOMORA_2016_12_31_waccm_low_alt_ozone.nc'
     
 
-    yr = 2016
-    date_slice=slice(str(yr)+'-06-01',str(yr)+'-06-14')
-    #date_slice=slice('2010-01-01','2020-12-31')
+    yr = 2018
+    date_slice=slice(str(yr)+'-01-10',str(yr)+'-03-31')
+    # date_slice=slice('2010-01-01','2020-12-31')
     #gromos = read_GROMORA(filename_gromos, date_slice)
     #somora = read_GROMORA(filename_somora, date_slice)
     prefix_gromos = [
-        '_waccm_low_alt_dx10_ozone_ony.nc',
+        '_waccm_low_alt_dx10_ozone_ony.nc',#2010
         '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2012
         '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2014
         '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2016
         #'_waccm_low_alt_dx10_v2_SB_ozone.nc',
         '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2018
         '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc'
+        '_waccm_low_alt_ozone.nc'#2020
     ]
     
     prefix_somora = [
+        '_waccm_low_alt_ozone.nc',#2010 
         '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2012
         '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2014
         '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_dx10_sinefit_ozone.nc',#2016
         '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
+        '_waccm_low_alt_ozone.nc',#2018
         '_waccm_low_alt_dx10_sinefit_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_ozone.nc',
-        '_waccm_low_alt_dx10_sinefit_ozone.nc',
-        '_waccm_low_alt_ozone.nc'
+        '_waccm_low_alt_ozone.nc'#2020
     ]
 
     instrument = 'comp'
@@ -1433,44 +1836,50 @@ if __name__ == "__main__":
         instNameGROMOS = 'GROMOS'
         instNameSOMORA = 'GROMOS'
         fold_somora = '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
-        fold_gromos =  '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
+        fold_gromos =  '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
     elif instrument == 'SOMORA':
         instNameGROMOS = 'SOMORA'
         instNameSOMORA = 'SOMORA'
         fold_somora ='/storage/tub/instruments/somora/level2/v1/'
-        fold_gromos ='/storage/tub/instruments/somora/level2/v1/'
+        fold_gromos ='/storage/tub/instruments/somora/level2/v2/'
     else:
         instNameGROMOS = 'GROMOS'
         instNameSOMORA = 'SOMORA'
-        fold_somora = '/storage/tub/instruments/somora/level2/v1/'
-        fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
+        fold_somora = '/storage/tub/instruments/somora/level2/v2/'
+        fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
     #basefolder=_waccm_low_alt_dx10_v2_SB_ozone
     gromos = read_GROMORA_all(basefolder=fold_gromos, 
     instrument_name=instNameGROMOS,
     date_slice=date_slice, 
-    years=[yr],#,#[yr],#[],#[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020]
-    prefix='_waccm_low_alt_dx10_v2_SB_ozone.nc'
+    years=[yr], # [2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020]   ,# [2015,2016,2017,2018,2019,2020],[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],#
+    prefix=  '_v2_all.nc' #  '_v2_all.nc'
     )
     somora = read_GROMORA_all(basefolder=fold_somora, 
     instrument_name=instNameSOMORA,
     date_slice=date_slice, 
-    years=[yr],#[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],#[2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],
-    prefix='_waccm_low_alt_ozone.nc'
+    years= [yr], #[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020] ,# [2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],#[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],# 
+    prefix= '_v2_all.nc' # '_v2_all.nc'#
     )
 
-    bn = '/home/esauvageat/Documents/GROMORA/Data/SBUV/'
+    v2 = True
+
+    bn = '/storage/tub/atmosphere/SBUV/O3/daily_mean_overpasses/'
     sbuv = read_SBUV_dailyMean(date_slice, SBUV_basename = bn, specific_fname='sbuv_v87.mod_v2r1.vmr.payerne_156.txt')
     sbuv_arosa = read_SBUV_dailyMean(date_slice, SBUV_basename = bn, specific_fname='sbuv_v87.mod_v2r1.vmr.arosa_035.txt')
 
-    mls= read_MLS(date_slice)
-    gromos['o3_x'] = 1e6*gromos['o3_x']
+    mls= read_MLS(date_slice, vers=5)
+
+    if v2:
+        gromos = gromos.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
+        somora = somora.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
+        gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_min)&(gromos['o3_x']<gromos['o3_x'].valid_max), drop = True)
+        somora['o3_x'] = 1e6*somora['o3_x']# .where((somora['o3_x']>somora['o3_x'].valid_min)&(gromos['o3_x']<gromos['o3_x'].valid_max), drop = True)
     # flags1a, flags1b= read_level1_flags(instrument=instrument, year=yr, suffixe='')
 
-    #compare_ts(gromos, somora, freq='1D', date_slice=slice('2021-01-01','2021-12-31'), basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
     
     #plot_ozone_ts(gromos, altitude=False)
 
-    #compare_ts_MLS(gromos, somora, date_slice=date_slice, freq='1H', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/', sbuv=sbuv)
+    # compare_ts_MLS(gromos, somora, date_slice=date_slice, freq='1H', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/', ds_mls=mls, sbuv=sbuv)
 
     #gromos_opacity, somora_opacity = read_opacity(folder='/scratch/GROSOM/Level2/opacities/', year=yr)
 
@@ -1478,35 +1887,58 @@ if __name__ == "__main__":
     # plot_ozone_flags('GROMOS', gromos, flags1a=flags1a, flags1b=flags1b, pressure_level=[27, 12], opacity = gromos_opacity, calib_version=1)
 
 
-    #map_rel_diff(gromos,somora, freq='1m', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
 
     #gromora_old = read_old_GROMOA_diff('DIFF_G_2017', date_slice)
-    #gromos_v2021 = read_gromos_v2021('gromosplot_ffts_select_v2021', date_slice)
+    # gromos_v2021 = read_gromos_v2021('gromosplot_ffts_select_v2021', date_slice)
     
-    #gromos_old_vs_new(gromos, gromos_v2021)
+    gromos_clean = gromos.where(abs(1-gromos.oem_diagnostics[:,2])<0.05).where(gromos.o3_mr>0.8)
+    somora_clean = somora.where(abs(1-somora.oem_diagnostics[:,2])<0.05).where(somora.o3_mr>0.8)
+
+    # compare_ts(gromos_clean, somora_clean, freq='1H', date_slice=slice('2010-01-01','2020-12-31'), basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
+
+
+    # gromos_old_vs_new(gromos_clean, gromos_v2021, mls, seasonal=False)
     
     #gromos = utc_to_lst(gromos)
     #somora = utc_to_lst(somora)
 
-    gromos_clean = gromos.where(abs(1-gromos.oem_diagnostics[:,2])<0.2).where(gromos.o3_mr>0.8)
-    somora_clean = somora.where(abs(1-somora.oem_diagnostics[:,2])<0.1).where(somora.o3_mr>0.8)
 
-    compare_pressure(gromos_clean, somora_clean, pressure_level=[31, 25, 21, 15, 12], add_sun=False, freq='1H', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
-    #compare_pressure_mls_sbuv(gromos_clean, somora_clean, mls, sbuv, pressure_level=[31, 25, 21, 15, 12], add_sun=False, freq='1H', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
-
-   # # #compare_altitude_old(gromora_old, altitudes=[69, 63, 51, 42, 30, 24])
-    #compare_avkm(gromos, somora, date_slice=slice('2016-03-01','2016-03-31'))
-    #compare_avkm(gromos, somora, date_slice=slice('2016-10-01','2016-10-31'))
-    # #compare_diff_daily(gromos ,somora, gromora_old, pressure_level=[34 ,31, 25, 21, 15, 12], altitudes=[69, 63, 51, 42, 30, 24])
-    compare_mean_diff(gromos, somora, sbuv = None)
-
-    #compare_with_apriori(gromos, freq='1H', date_slice=date_slice,basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/GROMOS_')
-    #compare_with_apriori(somora, freq='1H', date_slice=date_slice,basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/SOMORA_')
-
+    #compare_pressure(gromos_clean, somora_clean, pressure_level=[31, 25, 21, 15, 12], add_sun=False, freq='1H', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
+   # compare_pressure_mls_sbuv(gromos_clean, somora_clean, mls, sbuv, pressure_level=[35, 25, 21, 15, 9], add_sun=False, freq='1H', basefolder='/scratch/GROSOM/Level2/GROMORA_retrievals_v2/')
+    
     p_low=20
     p_high = 60
 
-    plot_o3_pressure_profile(gromos)
+    map_rel_diff(gromos_clean,somora_clean, freq='12H', basefolder='/scratch/GROSOM/Level2/GROMORA_retrievals_v2/')
+
+
+   # gromos_sel, mls_gromos_colloc, mls_gromos_colloc_conv, somora_sel, mls_somora_colloc, mls_somora_colloc_conv = MLS_comparison(gromos, somora, yrs= [2014,2015,2016,2017,2018], time_period=date_slice)
+
+   # test_plevel(10, slice('2017-01-02','2017-01-03'), gromos ,gromos_sel, mls, mls_gromos_colloc, mls_gromos_colloc_conv)
+   # compute_corr_profile(somora_sel,mls_somora_colloc,freq='7D',basefolder='/scratch/GROSOM/Level2/MLS/')
+
+    # compute_correlation_MLS(gromos_sel, mls_gromos_colloc_conv, freq='1M', pressure_level=[ 15,20,25], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/GROMOS')
+    # compute_correlation_MLS(somora_sel, mls_somora_colloc_conv, freq='1M', pressure_level=[15,20,24], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/SOMORA')
+    
+    # compare_GROMORA_MLS_profiles(gromos_sel, somora_sel, mls_gromos_colloc, mls_somora_colloc, mls,basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/', convolved=False)
+    # compare_GROMORA_MLS_profiles(gromos_sel, somora_sel, mls_gromos_colloc_conv, mls_somora_colloc_conv, mls,basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/', convolved=True)
+
+   # gromos_linear_fit = gromos_clean.o3_x.where((gromos_clean.o3_p<p_high) & (gromos_clean.o3_p>p_low), drop=True).mean(dim='o3_p').resample(time='1M').mean()#) .polyfit(dim='time', deg=1)
+    # somora_linear_fit = somora_clean.o3_x.resample(time='1M').mean().polyfit(dim='time', deg=1)
+   # # #compare_altitude_old(gromora_old, altitudes=[69, 63, 51, 42, 30, 24])
+    compare_avkm(gromos, somora, date_slice=slice('2018-01-10','2018-01-20'))
+    compare_avkm(gromos, somora, date_slice=slice('2018-03-01','2018-03-10'))
+    # #compare_diff_daily(gromos ,somora, gromora_old, pressure_level=[34 ,31, 25, 21, 15, 12], altitudes=[69, 63, 51, 42, 30, 24])
+    compare_mean_diff(gromos, somora, sbuv = None)
+
+    #compare_mean_diff_monthly(gromos, somora, mls, sbuv)
+
+   # compare_with_apriori(gromos, freq='1H', date_slice=date_slice,basefolder='/scratch/GROSOM/Level2/GROMORA_retrievals_v2/GROMOS_')
+   # compare_with_apriori(somora, freq='1H', date_slice=date_slice,basefolder='/scratch/GROSOM/Level2/GROMORA_retrievals_v2/SOMORA_')
+
+
+
+   # plot_o3_pressure_profile(gromos)
     # altitude = gromos_clean.o3_z.mean(dim='time').where(gromos_clean.o3_p<p_high, drop=True).where(gromos_clean.o3_p>p_low, drop=True)
     # mean_diff_clean = (gromos_clean.o3_x.mean(dim='time') - somora_clean.o3_x.mean(dim='time') )#/gromos.o3_x.mean(dim='time')
     # mean_diff_prange = mean_diff_clean.where(gromos_clean.o3_p<p_high, drop=True).where(gromos_clean.o3_p>p_low, drop=True)
@@ -1518,17 +1950,19 @@ if __name__ == "__main__":
     #plot_pressure(gromos, pressure_level=[44, 33 ,30, 23, 16,13, 8], add_sun=False)
     #plot_pressure(somora, pressure_level=[44, 33 ,30, 23, 16,13, 8], add_sun=True)
 
-    level1b_gromos = read_level1('/storage/tub/instruments/gromos/level1/GROMORA/v2','GROMOS_level1b_v2.nc')
+    level1b_gromos = read_level1('/storage/tub/instruments/gromos/level1/GROMORA/v2','GROMOS_level1b_v2_all.nc', dateslice=date_slice)
     #level1b_gromos2 = read_level1('/scratch/GROSOM/Level1','GROMOS_level1b_2015.nc')
-    #level1b_somora = read_level1('/scratch/GROSOM/Level1','SOMORA_level1b_v2.nc')
+    level1b_somora = read_level1('/storage/tub/instruments/somora/level1/v2','SOMORA_level1b_v2_all.nc', dateslice=date_slice)
+    # level1b_somora = read_level1('/scratch/GROSOM/Level1/level1b','SOMORA_level1b_v2_2012.nc')
     #level1b_somora_all = xr.concat([level1b_gromos, level1b_gromos2], dim = 'time')
     #level1b_somora_all.to_netcdf('/scratch/GROSOM/Level1/GROMOS_level1b_v2_all.nc')
     
-    plot_diagnostics(gromos, level1b_gromos.sel(time=slice('2009-07-01','2020-12-31')), instrument_name='GROMOS', freq='12H')
+    #plot_diagnostics(gromos, level1b_gromos.sel(time=slice('2009-07-01','2010-12-31')), instrument_name='GROMOS', freq='12H')
     #plot_diagnostics(somora, level1b_somora.sel(time=date_slice), instrument_name='SOMORA', freq='2H')
-    #compute_correlation(gromos_clean, somora_clean, freq='1D', pressure_level=[25, 15], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
-    #compute_corr_profile(gromos_clean, somora_clean, freq='7D', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
+   # compute_seasonal_correlation(gromos, somora, freq='1D', pressure_level=[25, 20, 15], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
 
+    # compute_correlation(gromos_clean, somora_clean, freq='1M', pressure_level=[25, 15], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
+    # compute_corr_profile(gromos_clean, somora_clean, freq='1M', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
 
     #plot_fshift_ts(ds_fshift, date_slice = slice("2016-08-01", "2016-08-15"), TRoom=TRoom)
    # ds_fshift.freq_shift_x.sel(time=slice("2017-01-01", "2018-12-31")).resample(time='12H').mean().plot()
@@ -1548,9 +1982,10 @@ if __name__ == "__main__":
 
     # compare_diff_daily_altitude(ozone_const_alt_gromos,ozone_const_alt_somora, gromora_old, altitudes=[63, 51, 42, 30, 24])
     
-    compare_opacity(folder='/scratch/GROSOM/Level2/opacities/', year=2016, date_slice=slice("2016-06-01", "2016-06-30"))
+   # compare_opacity(folder='/scratch/GROSOM/Level2/opacities/', year=2018, date_slice=slice("2018-06-01", "2018-06-27"))
 
     #plot_ozone_ts(gromos, altitude=False)
     # plot_ozone_ts(ozone_const_alt, altitude=True)
+
 
 # %%
