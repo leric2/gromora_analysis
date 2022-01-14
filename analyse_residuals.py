@@ -20,7 +20,7 @@ from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLoc
 
 from typhon.collocations import Collocator
 # from level2_gromora import * 
-# %matplotlib widget
+%matplotlib widget
 
 #from scipy.fft import fft, fftfreq
 
@@ -232,7 +232,7 @@ def compute_all_baselines(instrument_name, interpolated_residuals, ind_v, outfol
 
     return baselines_frequencies
 
-def read_all_baseline(instrument, outfolder):
+def read_all_baseline(instrument, outfolder, date_slice):
     amp_thresh=0.1
     baseline = xr.open_dataset(
             outfolder+instrument+'_fitted_baselines.nc',
@@ -241,7 +241,7 @@ def read_all_baseline(instrument, outfolder):
             # use_cftime=True,
         )
 
-    baseline = baseline.where(baseline.bl_amplitude > 0.05, drop=True)
+    baseline = baseline.where(baseline.bl_amplitude > 0.05, drop=True).sel(time=date_slice)
     datetime_vec = pd.to_datetime(baseline.time.data)
 
     fig, axs = plt.subplots(1, 1, figsize=(12,10))
@@ -252,10 +252,12 @@ def read_all_baseline(instrument, outfolder):
     axs.set_ylabel('Baseline periods [MHz]')
     fig.savefig(outfolder + instrument + '_baseline_periods_all.pdf')
 
+    return baseline
+
 
 if __name__ == "__main__":
 
-    yr = 2011
+    yr = 2017
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
     outfolder = '/scratch/GROSOM/Level2/GROMORA_waccm/'
     compute_new = False
@@ -323,7 +325,7 @@ if __name__ == "__main__":
 
         interpolated_residuals = interpolated_residuals.interpolate_na(dim='f', fill_value=0)
         # (interpolated_residuals.y - interpolated_residuals.yf).interpolate_na(dim='f', fill_value=0)
-        date_slice_sel=slice(str(yr)+'-05-13 00:00:00',str(yr)+'-05-14 02:00:00')
+        date_slice_sel=slice(str(yr)+'-10-20 00:00:00',str(yr)+'-10-20 01:00:00')
 
         residuals = interpolated_residuals.sel(time=date_slice_sel, drop = True)
         if len(residuals.time)>0:
@@ -342,7 +344,7 @@ if __name__ == "__main__":
 
         ind_v = np.arange(0, len(interpolated_residuals.time), 50)
         baseline_ds = compute_all_baselines(instrument, interpolated_residuals, ind_v, outfolder,amp_thresh=0.1)
-        baseline_ds.to_netcdf(outfolder+instrument+'_fitted_baseline_periods_'+str(yr)+'.nc')
+        # baseline_ds.to_netcdf(outfolder+instrument+'_fitted_baseline_periods_'+str(yr)+'.nc')
             # new_residuals = residuals.data + np.sum(baselines['fit'],1)
             # residuals.data = new_residuals
             # baselines = compute_baselines(residuals, display=True, quantile=0.5)
@@ -354,4 +356,4 @@ if __name__ == "__main__":
             #     per = baselines['periods'][i]
             #     print(f'f = {f:.1f}, with amplitude = {amp:.3f} and periods = {per:.3f}')
     else:
-        read_all_baseline(instrument, outfolder)
+        baseline = read_all_baseline(instrument, outfolder, date_slice = date_slice)
