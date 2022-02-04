@@ -26,7 +26,11 @@ ozone = {
     'factor':1e6,
     'colormap':plt.get_cmap('density'),
     'title':'Ozone',
-    'colorbar_title': 'PPM'
+    'colorbar_title': 'PPM',
+    'polar_vmin': 0.5,
+    'polar_vmax': 3,
+    'global_vmin': 0.5,
+    'global_vmax': 8,
 }
 temperature = {
     'varname':'t',
@@ -34,7 +38,11 @@ temperature = {
     'factor':1,
     'colormap':plt.get_cmap('temperature'),
     'title':'Temperature',
-    'colorbar_title': 'K'
+    'colorbar_title': 'K',
+    'polar_vmin': 185,
+    'polar_vmax': 230,
+    'global_vmin': 185,
+    'global_vmax': 240,
 }
 humidity = {
     'varname':'q',
@@ -42,7 +50,11 @@ humidity = {
     'factor':1e6,
     'colormap':plt.get_cmap('density'),
     'title':'Specific Humidity',
-    'colorbar_title': 'PPM'
+    'colorbar_title': 'PPM',
+    'polar_vmin': 3,
+    'polar_vmax': 6,
+    'global_vmin': 3,
+    'global_vmax': 8,
 }
 zonal_velocity = {
     'varname':'u',
@@ -50,7 +62,11 @@ zonal_velocity = {
     'factor':1,
     'colormap':plt.get_cmap('difference'),
     'title':'Zonal Velocity',
-    'colorbar_title': 'm/s'
+    'colorbar_title': 'm/s',
+    'polar_vmin': -40,
+    'polar_vmax': 40,
+    'global_vmin': -40,
+    'global_vmax': 40,
 }
 meridional_velocity = {
     'varname':'v',
@@ -58,7 +74,11 @@ meridional_velocity = {
     'factor':1,
     'colormap':plt.get_cmap('difference'),
     'title':'Meridional Velocity',
-    'colorbar_title': 'm/s'
+    'colorbar_title': 'm/s',
+    'polar_vmin': -30,
+    'polar_vmax': 30,
+    'global_vmin': -30,
+    'global_vmax': 30,
 }
 
 vertical_velocity = {
@@ -76,7 +96,11 @@ relative_vorticity = {
     'factor':1e4,
     'colormap':plt.get_cmap('vorticity'),
     'title':'Relative Vorticity',
-    'colorbar_title': 's-1'
+    'colorbar_title': 's-1',
+    'polar_vmin': -1,
+    'polar_vmax': 1,
+    'global_vmin': -1,
+    'global_vmax': 1,
 }
 geopotential = {
     'varname':'z',
@@ -164,10 +188,11 @@ def read_ECMWF_global(date):
 
     return ecmwf_og
 
-def extract_var_plevel(ecmwf_global, var=ozone, p_level=100, NH=True, coarsen=True):
-
-    mean_p = ecmwf_global.pressure.mean(dim=['time','latitude','longitude'])/100
-
+def extract_var_plevel(ecmwf_global, var=ozone, p_level=100, NH=True, coarsen=True, polar = True):
+    if polar:
+        mean_p = ecmwf_global.pressure.where(ecmwf_global.latitude>60).mean(dim=['time','latitude','longitude'])/100
+    else: 
+        mean_p = ecmwf_global.pressure.mean(dim=['time','latitude','longitude'])/100
     lvl = np.abs(mean_p.values-p_level).argmin()
 
     ecmwf_o3 = ecmwf_global[var['varname']].isel(level=lvl).mean(dim='time')
@@ -201,17 +226,25 @@ def plot_ozone(o3, ax):
     ) 
 
 
-def plot_ts(ts, ax, var, transform=ccrs.PlateCarree()):
+def plot_ts(ts, ax, var, polar):
     #fig = plt.figure(figsize=(8, 6))
     #axs = plt.axes(projection=ccrs.Orthographic(central_longitude=7, central_latitude=50, globe=None))
+    if polar:
+        minval = var['polar_vmin']
+        maxval = var['polar_vmax']
+    else:
+        minval = var['global_vmin']
+        maxval = var['global_vmax']
+    
+    transform=ccrs.PlateCarree()
     ts.plot(
         ax=ax,
         #levels=8,
         transform=transform,
         cbar_kwargs={"label": var['colorbar_title']},
         cmap = var['colormap'],
-        #vmin=0,
-        #vmax=10,
+        vmin=minval  ,
+        vmax=maxval,
         linewidth=0,
         rasterized=True,
     ) 
@@ -264,6 +297,7 @@ def plot_ts(ts, ax, var, transform=ccrs.PlateCarree()):
 
 if __name__ == "__main__":
     #date = pd.date_range(start='2019-03-03', end='2019-03-03')
+
     basefolder = '/storage/tub/atmosphere/ecmwf/daily_plots/'
     #ecmwf_ds = read_ECMWF( date, 'Bern')
 
@@ -274,7 +308,9 @@ if __name__ == "__main__":
     date = datetime.datetime.now()-datetime.timedelta(2)
     datestr = date.strftime('%Y-%m-%d%)
     ecmwf_global = read_ECMWF_global(date)
+
     p_levels = [100, 10, 1]
+
 
     for p in p_levels:
         fig, axs = plt.subplots(figsize=(20,10), nrows=2, ncols=3, subplot_kw={'projection': ccrs.Orthographic(central_longitude=7, central_latitude=90, globe=None)})
@@ -284,10 +320,10 @@ if __name__ == "__main__":
         counter = 0
         for (a,b), ax in np.ndenumerate(axs):
             print('Extracting '+variable[counter]['varname'])
-            ts = extract_var_plevel(ecmwf_global, var=variable[counter], p_level=p, NH=False, coarsen=False)
+            ts = extract_var_plevel(ecmwf_global, var=variable[counter], p_level=p, NH=False, coarsen=False, polar = True)
         
-            plot_ts(ts,  ax, var=variable[counter])
-            plot_ts(ts,  axs2[a,b], var=variable[counter])
+            plot_ts(ts,  ax, var=variable[counter], polar=True)
+            plot_ts(ts,  axs2[a,b], var=variable[counter], polar=False)
 
             ax.set_title(variable[counter]['title'], fontsize=18)
             axs2[a,b].set_title(variable[counter]['title'], fontsize=18)
