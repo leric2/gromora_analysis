@@ -272,6 +272,7 @@ if __name__ == "__main__":
 
     #date=date[0]
     date = datetime.datetime.now()-datetime.timedelta(2)
+    datestr = date.strftime('%Y-%m-%d%)
     ecmwf_global = read_ECMWF_global(date)
     p_levels = [100, 10, 1]
 
@@ -300,11 +301,11 @@ if __name__ == "__main__":
         fig.suptitle('Pressure = ' + str(p)+ ' hPa', fontsize=22)
         fig.tight_layout(rect=[0, 0.01, 0.99, 1])
         
-        fig.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_polar_'+str(date.year)+'_'+str(date.month)+'_'+str(date.day)+'_'+str(p)+'hPa'+'.pdf', dpi=500)
+        fig.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_polar_'+datestr+'_'+str(p)+'hPa'+'.pdf', dpi=500)
 
 
         #fig, axs = plt.subplots(figsize=(20,10), nrows=2, ncols=3, subplot_kw={'projection': ccrs.PlateCarree(central_longitude=7, globe=None)})
         fig2.suptitle('Pressure = ' + str(p)+ ' hPa', fontsize=22)
         fig2.tight_layout(rect=[0, 0.01, 0.99, 1])
         
-        fig2.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_'+str(date.year)+'_'+str(date.month)+'_'+str(date.day)+'_'+str(p)+'hPa'+'.pdf', dpi=500)
+        fig2.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_'+datestr+'_'+str(p)+'hPa'+'.pdf', dpi=500)
