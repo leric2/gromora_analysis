@@ -28,9 +28,9 @@ ozone = {
     'title':'Ozone',
     'colorbar_title': 'PPM',
     'polar_vmin': 0.5,
-    'polar_vmax': 3,
+    'polar_vmax': 4,
     'global_vmin': 0.5,
-    'global_vmax': 8,
+    'global_vmax': 3,
 }
 temperature = {
     'varname':'t',
@@ -40,7 +40,7 @@ temperature = {
     'title':'Temperature',
     'colorbar_title': 'K',
     'polar_vmin': 185,
-    'polar_vmax': 230,
+    'polar_vmax': 240,
     'global_vmin': 185,
     'global_vmax': 240,
 }
@@ -53,8 +53,8 @@ humidity = {
     'colorbar_title': 'PPM',
     'polar_vmin': 3,
     'polar_vmax': 6,
-    'global_vmin': 3,
-    'global_vmax': 8,
+    'global_vmin': 2,
+    'global_vmax': 4,
 }
 zonal_velocity = {
     'varname':'u',
@@ -306,7 +306,7 @@ if __name__ == "__main__":
 
     #date=date[0]
     date = datetime.datetime.now()-datetime.timedelta(2)
-    datestr = date.strftime('%Y-%m-%d%)
+    datestr = date.strftime('%Y-%m-%d')
     ecmwf_global = read_ECMWF_global(date)
 
     p_levels = [100, 10, 1]
@@ -334,14 +334,14 @@ if __name__ == "__main__":
             #ax.set_extent([-160,-170,30,90]), crs = ccrs.Orthographic(central_longitude=7, central_latitude=90, globe=None))
             counter = counter+1
 
-        fig.suptitle('Pressure = ' + str(p)+ ' hPa', fontsize=22)
+        fig.suptitle('ECMWF, '+datestr+' at p = ' + str(p)+ ' hPa', fontsize=22)
         fig.tight_layout(rect=[0, 0.01, 0.99, 1])
         
         fig.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_polar_'+datestr+'_'+str(p)+'hPa'+'.pdf', dpi=500)
 
 
         #fig, axs = plt.subplots(figsize=(20,10), nrows=2, ncols=3, subplot_kw={'projection': ccrs.PlateCarree(central_longitude=7, globe=None)})
-        fig2.suptitle('Pressure = ' + str(p)+ ' hPa', fontsize=22)
+        fig2.suptitle('ECMWF, '+datestr+' at p = ' + str(p)+ ' hPa', fontsize=22)
         fig2.tight_layout(rect=[0, 0.01, 0.99, 1])
         
         fig2.savefig(basefolder+str(date.year)+'/'+'ECMWF_overview_'+datestr+'_'+str(p)+'hPa'+'.pdf', dpi=500)
