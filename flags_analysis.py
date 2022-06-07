@@ -43,14 +43,6 @@ from dotenv import load_dotenv
 
 from matplotlib.backends.backend_pdf import PdfPages
 
-def save_single_pdf(filename, figures):
-    """
-    Save all `figures` to a single PDF. taken from Jonas
-    """
-    with PdfPages(filename) as pdf:
-        for fig in figures:
-            pdf.savefig(fig)
-
 instrument_name = "SOMORA"
 
 # date = pd.date_range(start='2019-01-03', end='2019-01-05')
