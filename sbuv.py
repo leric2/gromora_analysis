@@ -16,7 +16,7 @@ import matplotlib.ticker as ticker
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 
 from typhon.collocations import Collocator
-from level2_gromora import *
+#from level2_gromora import *
 
 colormap = 'cividis'
 
