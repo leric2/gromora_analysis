@@ -235,7 +235,7 @@ def compute_all_baselines(instrument_name, interpolated_residuals, ind_v, outfol
 def read_all_baseline(instrument, outfolder, date_slice):
     amp_thresh=0.1
     baseline = xr.open_dataset(
-            outfolder+instrument+'_fitted_baselines.nc',
+            outfolder+instrument+'_fitted_baselines_res.nc',
             decode_times=True,
             decode_coords=True,
             # use_cftime=True,
@@ -248,7 +248,7 @@ def read_all_baseline(instrument, outfolder, date_slice):
     for m in range(8):
         axs.plot(datetime_vec, baseline.bl_frequencies[:,m].where(baseline.bl_amplitude[:,m] > amp_thresh), '.', color='r')
         axs.plot(datetime_vec, baseline.bl_frequencies[:,m].where(baseline.bl_amplitude[:,m] < amp_thresh), '.', color='k')
-    axs.set_ylim(0,500)
+    axs.set_ylim(0,1000)
     axs.set_ylabel('Baseline periods [MHz]')
     fig.savefig(outfolder + instrument + '_baseline_periods_all.pdf')
 
@@ -257,12 +257,14 @@ def read_all_baseline(instrument, outfolder, date_slice):
 
 if __name__ == "__main__":
 
-    yr = 2017
+    yr = 2019
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
+    date_slice=slice('2019-01-01','2021-12-31')
     outfolder = '/scratch/GROSOM/Level2/GROMORA_waccm/'
     compute_new = False
+    reprocessed = True
 
-    instrument = 'GROMOS'
+    instrument = 'SOMORA'
     if instrument == 'GROMOS':
         instNameGROMOS = 'GROMOS'
         pref = 'GROMOS_'+str(yr)+'_12_31'
@@ -270,13 +272,13 @@ if __name__ == "__main__":
         # folder =  '/scratch/GROSOM/Level2/GROMORA_waccm/'
         freq_basename = '/scratch/GROSOM/Level1/frequency_grid_GROMOS.nc'
 
-        prefix= '_residuals.nc'
+        prefix= '_res_residuals.nc'
     elif instrument == 'SOMORA':
         pref = 'SOMORA_'+str(yr)+'_12_31'
-        folder ='/storage/tub/instruments/somora/level2/v1/'
+        folder ='/storage/tub/instruments/somora/level2/v2/'
         # folder =  '/scratch/GROSOM/Level2/GROMORA_waccm/'
         freq_basename = '/scratch/GROSOM/Level1/frequency_grid_SOMORA.nc'
-        prefix= '_residuals.nc'
+        prefix= '_res_residuals.nc'
        
     basefreq_ds = xr.open_dataset(
             freq_basename,
@@ -284,23 +286,26 @@ if __name__ == "__main__":
 
     #basefolder=_waccm_low_alt_dx10_v2_SB_ozone
     # prefix= '_waccm_low_alt_all.nc'
+    if reprocessed:
+        level2_dataset = xr.open_dataset(
+                folder+pref+prefix,
+                decode_times=True,
+                decode_coords=True,
+                # use_cftime=True,
+            )
+        level2_dataset_res = level2_dataset['res']#.get(['y', 'yf', 'y_baseline'] )
+        #level2_dataset_res = level2_dataset['y'].data - level2_dataset['yf'].data
+    else:
+        level2_dataset_res = xr.open_dataarray(
+                folder+pref+prefix,
+                decode_times=True,
+                decode_coords=True,
+                # use_cftime=True,
+            )
+
+        level2_dataset_res = level2_dataset_res.sel(time=date_slice, drop = True) 
+
     
-    # level2_dataset = xr.open_dataset(
-    #         folder+pref+prefix,
-    #         decode_times=True,
-    #         decode_coords=True,
-    #         # use_cftime=True,
-    #     )
-    level2_dataset_res = xr.open_dataarray(
-            folder+pref+prefix,
-            decode_times=True,
-            decode_coords=True,
-            # use_cftime=True,
-        )
-
-    level2_dataset_res = level2_dataset_res.sel(time=date_slice, drop = True) 
-
-    # level2_dataset_res = level2_dataset.get(['y', 'yf', 'y_baseline'] )
 
 
     # level2_dataset = read_GROMORA_all(basefolder=folder, 
@@ -325,7 +330,7 @@ if __name__ == "__main__":
 
         interpolated_residuals = interpolated_residuals.interpolate_na(dim='f', fill_value=0)
         # (interpolated_residuals.y - interpolated_residuals.yf).interpolate_na(dim='f', fill_value=0)
-        date_slice_sel=slice(str(yr)+'-10-20 00:00:00',str(yr)+'-10-20 01:00:00')
+        date_slice_sel=slice(str(yr)+'-01-01 00:00:00',str(yr)+'-12-31 01:00:00')
 
         residuals = interpolated_residuals.sel(time=date_slice_sel, drop = True)
         if len(residuals.time)>0:
@@ -342,9 +347,9 @@ if __name__ == "__main__":
             per = baselines['periods'][i]
             print(f'f = {f:.1f}, with amplitude = {amp:.3f} and periods = {per:.3f}')
 
-        ind_v = np.arange(0, len(interpolated_residuals.time), 50)
+        ind_v = np.arange(0, len(interpolated_residuals.time), 1)
         baseline_ds = compute_all_baselines(instrument, interpolated_residuals, ind_v, outfolder,amp_thresh=0.1)
-        # baseline_ds.to_netcdf(outfolder+instrument+'_fitted_baseline_periods_'+str(yr)+'.nc')
+        baseline_ds.to_netcdf(outfolder+instrument+'_fitted_baseline_periods_'+str(yr)+'.nc')
             # new_residuals = residuals.data + np.sum(baselines['fit'],1)
             # residuals.data = new_residuals
             # baselines = compute_baselines(residuals, display=True, quantile=0.5)
