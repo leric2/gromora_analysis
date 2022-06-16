@@ -54,7 +54,7 @@ import matplotlib.ticker as ticker
 import matplotlib
 cmap = matplotlib.cm.get_cmap('plasma')
 
-cmap_ts = plt.get_cmap('density') #'cividis' #
+cmap_ts ='cividis' # plt.get_cmap('density') #'cividis' #
 
 from MLS import *
 from sbuv import *
@@ -410,7 +410,7 @@ def compare_pressure_mls_sbuv_paper(gromos, somora, mls, sbuv, p_min, p_max, add
     fig.tight_layout(rect=[0, 0.01, 0.99, 1])
     fig.savefig(basefolder+'ozone_comparison_pressure_level_MLS_SBUV_paper_'+str(year)+'.pdf', dpi=500)
 
-def compare_ts_gromora(gromos, somora, date_slice, freq, basefolder):
+def compare_ts_gromora(gromos, somora, date_slice, freq, basefolder, paper=False):
     fs = 34
     year = pd.to_datetime(gromos.time.values[0]).year
 
@@ -474,15 +474,17 @@ def compare_ts_gromora(gromos, somora, date_slice, freq, basefolder):
     # cb.set_label(label=r"O$_3$ [ppmv]", fontsize=fs)
     # cb.ax.tick_params()
 
-    for ax in axs:
-        ax.set_ylim(100, 1e-2)
+    for ax in axs:  
+        ax.set_ylim(250, 5e-3) 
         ax.set_xlabel('')
         ax.tick_params(axis='both', which='major', labelsize=fs)
         ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:g}'.format(y)))
-        ax.xaxis.set_major_locator(mdates.YearLocator())
-        #ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        #ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
+        if paper:
+            ax.set_ylim(100, 1e-2)
+            ax.xaxis.set_major_locator(mdates.YearLocator())
+            #ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+            #ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
 
     plt.tight_layout(rect=[0, 0.01, 1.1, 1])
     fig.savefig(basefolder+'GROMORA_ozone_comparison_rel_diff_'+str(year)+'_'+freq+'.pdf', dpi=500)
@@ -2340,7 +2342,7 @@ def plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, 
     ############################################################
     # Full time series figures:
     if do_comp:
-        date_slice=slice('2009-09-23','2021-12-31')
+        date_slice=slice('2009-07-01','2021-12-31')
     
         gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level2_6H_v2_all.nc', date_slice)
         somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level2_6H_v2_all.nc', date_slice)
@@ -2349,7 +2351,7 @@ def plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, 
         somora_clean = somora.where(somora.level2_flag==0, drop=True)
     
         # Fig. 7:
-        compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder)
+        compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder, paper=True)
     
         # Fig. 8 & 9:
         level1b_somora, somora_flags_level1a, somora_flags_level1b = read_level1('/storage/tub/instruments/somora/level1/v2','SOMORA', dateslice=slice('2009-01-01', '2021-12-31'))
@@ -2404,10 +2406,13 @@ if __name__ == "__main__":
     #date_slice=slice('2010-01-04','2021-04-30')
 
     #date_slice=slice('2010-01-04','2020-12-31')
-    #date_slice=slice('2009-12-01','2010-03-31')
+
+    # Date range for tests:
+    #date_slice=slice('2019-01-01','2019-12-31')
 
     years = [2009, 2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020, 2021] #[2009, 2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020, 2021]
     v2 = True
+    flagged_L2 = True
 
     instrument = 'comp'
     if instrument == 'GROMOS':
@@ -2427,55 +2432,60 @@ if __name__ == "__main__":
             fold_somora = '/storage/tub/instruments/somora/level2/v2/'
             fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
             prefix_all='_v2.nc'
+            fold_somora = '/scratch/GROSOM/Level2/SOMORA/'
+            fold_gromos = '/scratch/GROSOM/Level2/GROMOS/'
+            prefix_all='.nc'
         else:
             fold_somora = '/storage/tub/instruments/somora/level2/v1/'
             fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
             prefix_all='_waccm_low_alt_ozone.nc'
     
-    strategy = 'plot_all'#'plot'
-    if strategy=='read_save':
+    strategy = 'read'#'plot'
+    if strategy[0:4]=='read':
         gromos = read_GROMORA_all(
             basefolder=fold_gromos, 
             instrument_name=instNameGROMOS,
             date_slice=date_slice, 
             years=years,#
-            prefix=prefix_all 
+            prefix=prefix_all,
+            flagged=flagged_L2,
         )
-        somora = read_GROMORA_all(basefolder=fold_somora, 
-            instrument_name=instNameSOMORA,
-            date_slice=date_slice, 
-            years=years, #[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020]
-            prefix=prefix_all  # '_v2_all.nc'#
-        )
-        print('Corrupted retrievals GROMOS : ',len(gromos['o3_x'].where((gromos['o3_x']<0), drop = True))+ len(gromos['o3_x'].where((gromos['o3_x']>1e-5), drop = True))) 
-        print('Corrupted retrievals SOMORA : ',len(somora['o3_x'].where((somora['o3_x']<0), drop = True))+ len(somora['o3_x'].where((somora['o3_x']>1e-5), drop = True))) 
+        # somora = read_GROMORA_all(basefolder=fold_somora, 
+        #     instrument_name=instNameSOMORA,
+        #     date_slice=date_slice, 
+        #     years=years, #[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020]
+        #     prefix=prefix_all,  # '_v2_all.nc'#
+        #     flagged=flagged_L2,
+        # )
 
         # gromos = gromos.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
         # somora = somora.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
         #gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>0)&(gromos['o3_x']<1e-5), drop = True)
         #somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>0)&(somora['o3_x']<1e-5), drop = True)
+        #print('Corrupted retrievals: ',len(gromos['o3_x'].where((gromos['o3_x']<gromos['o3_x'].valid_min), drop = True))+ len(gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_max), drop = True))) 
         gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_min)&(gromos['o3_x']<gromos['o3_x'].valid_max), drop = True)
-        somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>somora['o3_x'].valid_min)&(somora['o3_x']<somora['o3_x'].valid_max), drop = True)
+        #somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>somora['o3_x'].valid_min)&(somora['o3_x']<somora['o3_x'].valid_max), drop = True)
 
-        gromos = add_flags_level2_gromora(gromos, 'GROMOS')
-        somora = add_flags_level2_gromora(somora, 'SOMORA')
+        if not flagged_L2:
+            gromos = add_flags_level2_gromora(gromos, 'GROMOS')
+            somora = add_flags_level2_gromora(somora, 'SOMORA')
 
         gromos_clean = gromos.where(gromos.retrieval_quality==1, drop=True)#.where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
-        somora_clean = somora.where(somora.retrieval_quality==1, drop=True)#.where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
+        #somora_clean = somora.where(somora.retrieval_quality==1, drop=True)#.where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
         
         print('GROMOS good quality level2: ', 100*len(gromos_clean.time)/len(pd.date_range('2009-07-01', '2021-12-31 23:00:00', freq='1H')) )
-        print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2009-09-23', '2021-12-31 23:00:00', freq='1H')) )
+        #print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2009-09-23', '2021-12-31 23:00:00', freq='1H')) )
         #print('GROMOS good quality level2: ', 100*len(gromos_clean.time)/len(pd.date_range('2020-01-01', '2020-12-31 23:00:00', freq='1H')) )
         #print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2020-01-01', '2020-12-31 23:00:00', freq='1H')) )
-        
-        #gromos_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/GROMOS_level2_6H_v2_all.nc')
-        #somora_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/SOMORA_level2_6H_v2_all.nc')
+        if strategy=='read_save':
+            gromos_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2_all.nc')
+            #somora_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2_all.nc')
     elif strategy=='plot_all':
-        plot_figures_gromora_paper(do_sensitivity = False, do_L2=True, do_comp=False, do_old=False)
+        plot_figures_gromora_paper(do_sensitivity = False, do_L2=False, do_comp=True, do_old=False)
         exit()
     else:
-        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level2_6H_v2_all.nc', date_slice)
-        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level2_6H_v2_all.nc', date_slice)
+        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2_all.nc', date_slice)
+        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2_all.nc', date_slice)
         
         gromos_clean = gromos.where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
         somora_clean = somora.where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
@@ -2489,7 +2499,7 @@ if __name__ == "__main__":
     sbuv_arosa = read_SBUV_dailyMean(date_slice, SBUV_basename = bn, specific_fname='sbuv_v87.mod_v2r1.vmr.arosa_035.txt')
 
     mls= read_MLS(date_slice, vers=5, filename_MLS='AuraMLS_L2GP-O3_v5_400-800_BERN.nc')
-    outfolder = '/scratch/GROSOM/Level2/GROMORA_paper_plots/'
+    outfolder = '/scratch/GROSOM/Level2/GROMORA_retrievals_v2/'
 
     #plot_ozone_ts(gromos, instrument_name='GROMOS', freq='1H', altitude=False, basefolder=outfolder )
 
@@ -2537,7 +2547,7 @@ if __name__ == "__main__":
     # Relative difference GROMOS vs SOMORA
 
     #map_rel_diff(gromos_clean, somora_clean, freq='6H', basefolder=outfolder)
-    #compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder)
+    #compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder, paper=True)
 
    # test_plevel(10, slice('2017-01-02','2017-01-03'), gromos ,gromos_sel, mls, mls_gromos_colloc, mls_gromos_colloc_conv)
    # compute_corr_profile(somora_sel,mls_somora_colloc,freq='7D',basefolder='/scratch/GROSOM/Level2/MLS/')
@@ -2551,10 +2561,10 @@ if __name__ == "__main__":
     # Averaging kernels
 
     # compare_avkm(gromos, somora, date_slice, outfolder)
-    # gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
-    # somora_clean=somora_clean.where(somora_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(somora_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
-
+    #gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
+    #somora_clean=somora_clean.where(somora_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(somora_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
     #compare_avkm(gromos_clean, somora_clean, date_slice, outfolder, seasonal=True)
+
     # #compare_diff_daily(gromos ,somora, gromora_old, pressure_level=[34 ,31, 25, 21, 15, 12], altitudes=[69, 63, 51, 42, 30, 24])
     # compare_mean_diff(gromos, somora, sbuv = None, basefolder=outfolder)
 

@@ -69,7 +69,6 @@ def read_GROMORA(filename, date_slice):
     return gromora_ds
 
 def read_GROMORA_concatenated(filename, date_slice):
-
     gromora_ds = xr.open_dataset(
         filename,
         decode_times=True,
