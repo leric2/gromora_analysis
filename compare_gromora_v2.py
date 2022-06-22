@@ -42,7 +42,7 @@ import xarray as xr
 from scipy import stats
 from scipy.odr import *
 
-from GROMORA_harmo.scripts.retrieval import GROMORA_time
+from GROMORA_harmo.scripts.retrieval import gromora_time
 from base_tool import get_color, save_single_pdf, regression_xy, linear, calcR2_wikipedia
 from level2_gromora import read_GROMORA_all, read_GROMORA_concatenated, read_gromos_v2021, read_old_SOMORA
 from level2_gromora_diagnostics import read_level1, add_flags_level2_gromora
@@ -818,7 +818,7 @@ def compute_seasonal_correlation_paper(gromos, somora, freq='1M', p_min = [100],
         {'o3_somora':somora.o3_x.resample(time=freq).mean()},
         {'error_gromos':error_gromos.resample(time=freq).mean()},
         {'error_somora':error_somora.resample(time=freq).mean()},
-        {'opacity':somora.opacity.resample(time=freq).mean()},
+        {'tropospheric_opacity':somora.tropospheric_opacity.resample(time=freq).mean()},
         ))
 
     # Clean the ds to remove any Nan entries:
@@ -953,7 +953,7 @@ def compute_seasonal_correlation_paper(gromos, somora, freq='1M', p_min = [100],
                     ax=axs[i,col],
                     x='o3_gromos', 
                     y='o3_somora',
-                    hue='opacity',
+                    hue='tropospheric_opacity',
                     hue_style='continuous',
                     vmin=0,
                     vmax=2,
@@ -2344,8 +2344,8 @@ def plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, 
     if do_comp:
         date_slice=slice('2009-07-01','2021-12-31')
     
-        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level2_6H_v2_all.nc', date_slice)
-        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level2_6H_v2_all.nc', date_slice)
+        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc', date_slice)
+        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc', date_slice)
         
         gromos_clean = gromos.where(gromos.level2_flag==0, drop=True)
         somora_clean = somora.where(somora.level2_flag==0, drop=True)
@@ -2354,8 +2354,8 @@ def plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, 
         compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder, paper=True)
     
         # Fig. 8 & 9:
-        level1b_somora, somora_flags_level1a, somora_flags_level1b = read_level1('/storage/tub/instruments/somora/level1/v2','SOMORA', dateslice=slice('2009-01-01', '2021-12-31'))
-        somora_clean['opacity'] = ('time',level1b_somora.tropospheric_opacity.reindex_like(somora_clean, method='nearest', tolerance='1H'))
+        #level1b_somora, somora_flags_level1a, somora_flags_level1b = read_level1('/storage/tub/instruments/somora/level1/v2','SOMORA', dateslice=slice('2009-01-01', '2021-12-31'))
+        #somora_clean['opacity'] = ('time',level1b_somora.tropospheric_opacity.reindex_like(somora_clean, method='nearest', tolerance='1H'))
         compute_seasonal_correlation_paper(gromos_clean, somora_clean, freq='6H', p_min=[0.1, 1, 10] , p_max=[0.9, 5, 50], basefolder=outfolder)    
         
         # Fig. 12:
@@ -2379,8 +2379,8 @@ def plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, 
         sbuv = read_SBUV_dailyMean(date_slice, SBUV_basename = '/storage/tub/atmosphere/SBUV/O3/daily_mean_overpasses/', specific_fname='sbuv_v87.mod_v2r1.vmr.payerne_156.txt')
         mls= read_MLS(date_slice, vers=5, filename_MLS='AuraMLS_L2GP-O3_v5_400-800_BERN.nc')
 
-        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level2_6H_v2_all.nc', date_slice)
-        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level2_6H_v2_all.nc', date_slice)
+        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc', date_slice)
+        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc', date_slice)
         
         gromos_clean = gromos.where(gromos.level2_flag==0, drop=True)
         somora_clean = somora.where(somora.level2_flag==0, drop=True)
@@ -2432,60 +2432,61 @@ if __name__ == "__main__":
             fold_somora = '/storage/tub/instruments/somora/level2/v2/'
             fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
             prefix_all='_v2.nc'
-            fold_somora = '/scratch/GROSOM/Level2/SOMORA/'
-            fold_gromos = '/scratch/GROSOM/Level2/GROMOS/'
+            fold_somora = '/scratch/GROSOM/Level2/SOMORA/v2/'
+            fold_gromos = '/scratch/GROSOM/Level2/GROMOS/v2/'
             prefix_all='.nc'
         else:
             fold_somora = '/storage/tub/instruments/somora/level2/v1/'
             fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
             prefix_all='_waccm_low_alt_ozone.nc'
     
-    strategy = 'read'#'plot'
+    strategy = 'plot_all'#'plot'
     if strategy[0:4]=='read':
-        gromos = read_GROMORA_all(
-            basefolder=fold_gromos, 
-            instrument_name=instNameGROMOS,
-            date_slice=date_slice, 
-            years=years,#
-            prefix=prefix_all,
-            flagged=flagged_L2,
-        )
-        # somora = read_GROMORA_all(basefolder=fold_somora, 
-        #     instrument_name=instNameSOMORA,
+        # gromos = read_GROMORA_all(
+        #     basefolder=fold_gromos, 
+        #     instrument_name=instNameGROMOS,
         #     date_slice=date_slice, 
-        #     years=years, #[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020]
-        #     prefix=prefix_all,  # '_v2_all.nc'#
+        #     years=years,#
+        #     prefix=prefix_all,
         #     flagged=flagged_L2,
         # )
+        somora = read_GROMORA_all(
+            basefolder=fold_somora, 
+            instrument_name=instNameSOMORA,
+            date_slice=date_slice, 
+            years=years, #[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020]
+            prefix=prefix_all,  # '_v2_all.nc'#
+            flagged=flagged_L2,
+        )
 
         # gromos = gromos.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
         # somora = somora.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
         #gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>0)&(gromos['o3_x']<1e-5), drop = True)
         #somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>0)&(somora['o3_x']<1e-5), drop = True)
         #print('Corrupted retrievals: ',len(gromos['o3_x'].where((gromos['o3_x']<gromos['o3_x'].valid_min), drop = True))+ len(gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_max), drop = True))) 
-        gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_min)&(gromos['o3_x']<gromos['o3_x'].valid_max), drop = True)
-        #somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>somora['o3_x'].valid_min)&(somora['o3_x']<somora['o3_x'].valid_max), drop = True)
+        #gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_min)&(gromos['o3_x']<gromos['o3_x'].valid_max), drop = True)
+        somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>somora['o3_x'].valid_min)&(somora['o3_x']<somora['o3_x'].valid_max), drop = True)
 
         if not flagged_L2:
             gromos = add_flags_level2_gromora(gromos, 'GROMOS')
             somora = add_flags_level2_gromora(somora, 'SOMORA')
 
-        gromos_clean = gromos.where(gromos.retrieval_quality==1, drop=True)#.where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
-        #somora_clean = somora.where(somora.retrieval_quality==1, drop=True)#.where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
+        #gromos_clean = gromos.where(gromos.retrieval_quality==1, drop=True)#.where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
+        somora_clean = somora.where(somora.retrieval_quality==1, drop=True)#.where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
         
-        print('GROMOS good quality level2: ', 100*len(gromos_clean.time)/len(pd.date_range('2009-07-01', '2021-12-31 23:00:00', freq='1H')) )
-        #print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2009-09-23', '2021-12-31 23:00:00', freq='1H')) )
+        #print('GROMOS good quality level2: ', 100*len(gromos_clean.time)/len(pd.date_range('2009-07-01', '2021-12-31 23:00:00', freq='1H')) )
+        print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2009-09-23', '2021-12-31 23:00:00', freq='1H')) )
         #print('GROMOS good quality level2: ', 100*len(gromos_clean.time)/len(pd.date_range('2020-01-01', '2020-12-31 23:00:00', freq='1H')) )
         #print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2020-01-01', '2020-12-31 23:00:00', freq='1H')) )
         if strategy=='read_save':
-            gromos_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2_all.nc')
-            #somora_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2_all.nc')
+            #gromos_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc')
+            somora_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc')
     elif strategy=='plot_all':
-        plot_figures_gromora_paper(do_sensitivity = False, do_L2=False, do_comp=True, do_old=False)
+        plot_figures_gromora_paper(do_sensitivity = False, do_L2=False, do_comp=False, do_old=True)
         exit()
     else:
-        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2_all.nc', date_slice)
-        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2_all.nc', date_slice)
+        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc', date_slice)
+        somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc', date_slice)
         
         gromos_clean = gromos.where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
         somora_clean = somora.where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
@@ -2603,6 +2604,9 @@ if __name__ == "__main__":
     #plot_pressure(somora, pressure_level=[44, 33 ,30, 23, 16,13, 8], add_sun=True)
     
     level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = read_level1('/storage/tub/instruments/gromos/level1/GROMORA/v2', 'GROMOS', dateslice=slice('2009-01-01', '2021-12-31'))
+    
+    level1b_gromos=level1b_gromos.sel(time=~level1b_gromos.get_index("time").duplicated())
+    
     num_good_1a_gromos = len(gromos_flags_level1a.where(gromos_flags_level1a.calibration_flags.sum(dim='flags')>6, drop=True).time)
     num_good_1b_gromos = len(gromos_flags_level1b.where(gromos_flags_level1b.calibration_flags[:,0]==1, drop=True).time)
     
@@ -2624,7 +2628,10 @@ if __name__ == "__main__":
    # gromos_clean['opacity'] = ('time',level1b_gromos.tropospheric_opacity.reindex_like(gromos_clean, method='nearest', tolerance='1H'))
     
     # pressure_level=[34 ,31, 25, 21, 15, 12], altitudes=[69, 63, 51, 42, 30, 24] 
-    somora_clean['opacity'] = ('time',level1b_somora.tropospheric_opacity.reindex_like(somora_clean, method='nearest', tolerance='1H'))
+
+    
+    #gromos_clean['tropospheric_opacity'] = ('time',level1b_gromos.tropospheric_opacity.reindex_like(gromos_clean, method='nearest', tolerance='1H'))
+    #somora_clean['tropospheric_opacity'] = ('time',level1b_somora.tropospheric_opacity.reindex_like(somora_clean, method='nearest', tolerance='1H'))
     
     #####################################################################
     # Correlations GROMOS-SOMORA

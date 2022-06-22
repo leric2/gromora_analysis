@@ -27,6 +27,15 @@ color_tWindow= '#fdae61'
 color_Tprofile='#fc8d59'
 symbols =['o','s','<','D','^', 'x','>'] 
 
+ERROR_NAMES = {
+    'pointing': 'pointing',
+    'Tcold': r'$T_{cold}$' , 
+    'window transmittance': 'window transmittance',
+    'Tprofile':r'$T_{profile}$',
+    'spectroscopy':'spectroscopy',
+    'continuum':'continuum',
+    'sideband':'sideband ratio',
+} 
 
 def read_sensitivity(folder ='/scratch/GROSOM/Level2/GROMORA_sensitivity/', basename='', specific_fnames =[''], v2=True):
     c=0
@@ -168,7 +177,7 @@ def plot_uncertainty_budget(instrument_name, sensi_ds, param, outname):
 
     p_mr = sensi_ds.o3_p.data[mr>=0.8]
 
-    fig, axs = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(20, 14))
+    fig, axs = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(22, 16))
     ozone.isel(param=0).plot(
         y='o3_p', ax=axs[0], color=color_plot, ls='-', label='OG')
 
@@ -208,7 +217,7 @@ def plot_uncertainty_budget(instrument_name, sensi_ds, param, outname):
 
             ######################### 
             diff.plot(
-                y='o3_p', ax=axs[1], color='k',lw=0, marker=symbols[i] , label=pa)
+                y='o3_p', ax=axs[1], color='k',lw=0, marker=symbols[i] , label=ERROR_NAMES[pa])
 
   
     # ##################################### 
@@ -248,8 +257,8 @@ def plot_uncertainty_budget(instrument_name, sensi_ds, param, outname):
     # axs[2].set_ylabel('', fontsize=fs)
 
     for ax in axs:
-        ax.fill_between(ax.get_xlim(),p_mr[0],1e4, color=color_shading, alpha=0.5)
-        ax.fill_between(ax.get_xlim(),p_mr[-1],1e-4, color=color_shading, alpha=0.5)
+        # ax.fill_between(ax.get_xlim(),p_mr[0],1e4, color=color_shading, alpha=0.5)
+        # ax.fill_between(ax.get_xlim(),p_mr[-1],1e-4, color=color_shading, alpha=0.5)
         ax.grid(which='both', axis='y', linewidth=0.75)
         ax.grid(which='both', axis='x', linewidth=0.75)
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
@@ -263,7 +272,7 @@ def plot_sensi_fig_gromora_paper(instrument_name = 'GROMOS'):
     # else:
     #     outN1 = 'fig6.pdf'
     #     outN2 = 'figA2.pdf'
-    folder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v2/'    
+    folder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v3/'    
     outfolder = '/scratch/GROSOM/Level2/GROMORA_paper_plots/'
     specific_fnames = [
         'sensitivity_test_og.nc',
@@ -271,7 +280,7 @@ def plot_sensi_fig_gromora_paper(instrument_name = 'GROMOS'):
         'Tcold_.nc',
         'tWindow_.nc',
         'sensitivity_test_Tprofile.nc',
-        'sensitivity_test_spectroscopy.nc',
+        'sensitivity_test_spectroscopy_new.nc',
         'sensitivity_test_continuum.nc',
         'sensitivity_test_SB.nc',
     ] 
@@ -303,9 +312,9 @@ def plot_sensi_fig_gromora_paper(instrument_name = 'GROMOS'):
     plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=outfolder+instrument_name+'_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'_plots.pdf')
 
 if __name__ == "__main__":
-    date = datetime.date(2018, 2, 26)
-    # date = datetime.date(2018, 6, 9)
-    folder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v2/'
+    #date = datetime.date(2018, 2, 26)
+    date = datetime.date(2018, 6, 9)
+    folder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v3/'
     instrument_name = 'SOMORA'
     basename = instrument_name + '_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
    # GROMOS_level2_AC240_2018_02_26_sensitivity_test_og.nc
@@ -315,7 +324,7 @@ if __name__ == "__main__":
         'Tcold_.nc',
         'tWindow_.nc',
         'sensitivity_test_Tprofile.nc',
-        'sensitivity_test_spectroscopy.nc',
+        'sensitivity_test_spectroscopy_new.nc',
         'sensitivity_test_continuum.nc',
         'sensitivity_test_SB.nc',
     ] 

@@ -19,7 +19,6 @@ Attributes:
 
 
 """
-
 #%%
 import datetime
 from multiprocessing.sharedctypes import Value
@@ -42,7 +41,7 @@ import xarray as xr
 from scipy import stats
 from scipy.odr import *
 
-from GROMORA_harmo.scripts.retrieval import GROMORA_time
+from GROMORA_harmo.scripts.retrieval import gromora_time
 
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 from matplotlib.lines import Line2D
@@ -72,11 +71,11 @@ def utc_to_lst(gromora):
     sunset = list()
     for i, t in enumerate(gromora.time.data):
         #print('from : ',t)
-        lst, ha, sza, night, tc= GROMORA_time.get_LST_from_GROMORA(t, gromora.obs_lat.data[i], gromora.obs_lon.data[i])
+        lst, ha, sza, night, tc= gromora_time.get_LST_from_GROMORA(t, gromora.obs_lat.data[i], gromora.obs_lon.data[i])
         #print('to :',lst)
         lsts.append(lst)
 
-        sunr, suns = GROMORA_time.get_sunset_lst_from_lst(lst, gromora.obs_lat.data[i])
+        sunr, suns = gromora_time.get_sunset_lst_from_lst(lst, gromora.obs_lat.data[i])
         sunrise.append(sunr)
         sunset.append(suns)
 

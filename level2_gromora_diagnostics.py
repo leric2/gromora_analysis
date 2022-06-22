@@ -15,7 +15,6 @@ GROMORA L2 files.
 
 #%%
 from calendar import month_abbr, month_name
-import datetime
 import os
 from re import A
 from typing import ValuesView
@@ -35,6 +34,7 @@ import typhon
 import xarray as xr
 from scipy import stats
 from scipy.odr import *
+from GROMORA_harmo.scripts.retrieval.gromora_time import get_LST_from_GROMORA,datetime64_2_datetime,mjd2k_date,gromora_tz
 
 from flags_analysis import read_level1_flags
 from base_tool import save_single_pdf, get_color
@@ -998,8 +998,50 @@ def add_flags_level2_gromora(gromos, instrument_name):
     gromos['level2_flag'].attrs['description'] = 'Manual level 2 flag of the retrievals for spurious periods: 0 is good periods, 1 is flagged'
     return gromos
 
+def add_flags_save(instrument_name, year, gromora, date_slice, level1_folder, outfolder):
+    print('###################################################################')
+
+    print('Saving yearly netCDF for: ',instrument_name,' ', str(year))
+
+    level1b, flags_level1a, flags_level1b = read_level1(level1_folder, instrument_name, dateslice=slice('2009-01-01', '2021-12-31'))
+    level1b=level1b.sel(time=date_slice)
+
+    # Removing some duplicated time values in GROMOS level 1 concatenated files.
+    level1b=level1b.sel(time=~level1b.get_index("time").duplicated())
+
+    lat = gromora.lat.mean(dim='time').data
+    lon = gromora.lon.mean(dim='time').data
+
+    # Julian dates from GEOMS https://avdc.gsfc.nasa.gov/PDF/GEOMS/geoms-1.0.pdf
+    julian_date = mjd2k_date(pd.to_datetime(gromora.time.data))
+
+    sza_list = list()
+    for t in gromora.time.data:
+        lst,ha,sza,night,tc = get_LST_from_GROMORA(datetime64_2_datetime(t).replace(tzinfo=gromora_tz), lat, lon, check_format=False)
+        sza_list.append(sza)
+
+    gromora['MJD2K'] =  ('time', julian_date)
+    gromora.MJD2K.attrs['standard_name'] = 'MJD2K'
+    gromora.MJD2K.attrs['long_name'] = 'Modified Julian Date 2000'
+    gromora.MJD2K.attrs['units'] = 'MJD2K'
+    gromora.MJD2K.attrs['description'] = 'MJD2K as defined by GEOMS: it is 0.000000 on January 1, 2000 at 00:00:00 UTC'
+
+    gromora['solar_zenith_angle'] =  ('time', sza_list)
+    gromora.solar_zenith_angle.attrs['standard_name'] = 'solar_zenith_angle'
+    gromora.solar_zenith_angle.attrs['long_name'] = 'solar zenith angle'
+    gromora.solar_zenith_angle.attrs['units'] = 'deg'
+    gromora.solar_zenith_angle.attrs['description'] = 'angle between the sun rays and zenith, minimal at local solar noon'
+
+
+    gromora['tropospheric_opacity'] = ('time',level1b.tropospheric_opacity.reindex_like(gromora, method='nearest', tolerance='1H'))
+    gromora.tropospheric_opacity.attrs['standard_name'] = 'tropospheric_opacity'
+    gromora.tropospheric_opacity.attrs['long_name'] = 'tropospheric_opacity computed with Ingold method during calibration'
+    gromora.tropospheric_opacity.attrs['units'] = 'Np'
+
+    gromora.to_netcdf(outfolder+'/'+instrument_name+'_level2_'+str(yr)+'.nc')
+
 if __name__ == "__main__":
-    yr = 2017
+    yr = 2021
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
 
     instNameGROMOS = 'GROMOS'
@@ -1010,8 +1052,8 @@ if __name__ == "__main__":
     level1_folder_gromos = '/storage/tub/instruments/gromos/level1/GROMORA/v2/'
     prefix_all='_v2.nc'
 
-    plot_yearly_diagnostics = True
-    add_flags_save = False
+    plot_yearly_diagnostics = False
+    save = True
  
     gromos = read_GROMORA_all(basefolder=fold_gromos, 
     instrument_name=instNameGROMOS,
@@ -1037,9 +1079,11 @@ if __name__ == "__main__":
         somora, somora_clean, level1b_somora, somora_flags_level1a, somora_flags_level1b = yearly_diagnostics('SOMORA', yr, somora, date_slice, level1_folder_somora, outfolder, nice_ts=False, plots=False)
         gromos, gromos_clean, level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = yearly_diagnostics('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder, nice_ts=False, plots=False)
 
-    if add_flags_save:
-        gromos.to_netcdf('/scratch/GROSOM/Level2/GROMOS/GROMOS_level2_'+str(yr)+'.nc')
-        somora.to_netcdf('/scratch/GROSOM/Level2/SOMORA/SOMORA_level2_'+str(yr)+'.nc')
+    if save:
+        add_flags_save('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder='/scratch/GROSOM/Level2/GROMOS/v2/')
+        add_flags_save('SOMORA', yr, somora, date_slice, level1_folder_somora, outfolder='/scratch/GROSOM/Level2/SOMORA/v2/')
+        #gromos.to_netcdf('/scratch/GROSOM/Level2/GROMOS/GROMOS_level2_'+str(yr)+'.nc')
+        #somora.to_netcdf('/scratch/GROSOM/Level2/SOMORA/SOMORA_level2_'+str(yr)+'.nc')
     #plot_o3_apriori_all(gromos, outfolder)
 
     #plot_o3_apriori_cov('/home/esauvageat/Documents/GROMORA/Data/apriori_cov.npy', gromos, outfolder)
