@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on 06.01.22
+
+@author: Eric Sauvageat
+
+This is the main script for the ECMWF data treatment in the frame of the GROMORA project
+
+This module contains the code to read the ECMWF daily global and local files and to do the daily plots.
+
+"""
 
 import datetime
 import os
@@ -111,9 +121,6 @@ geopotential = {
     'colorbar_title': 's-1'
 }
 
-    
-
-
 def read_ECMWF(date, location='BERN'):
     ECMWF_folder = '/storage/tub/instruments/gromos/ECMWF_Bern/'
     counter = 0
@@ -163,14 +170,6 @@ def read_ECMWF_global(date):
         decode_coords=True,
         use_cftime=False,
     )
-    #
-    # for i in range(len(ecmwf_og.time.data)):
-    #     ecmwf = ecmwf_og.isel(loc=0, time=i)
-    #     ecmwf = read_add_geopotential_altitude(ecmwf)
-    #ecmwf_og = ecmwf_og.mean(dim='time')
-
-
-    #
 
     pressure = pressure_levels_global(lnsp=ecmwf_og['lnsp'].values[:,0,:,:])
     da_pressure = xr.DataArray(

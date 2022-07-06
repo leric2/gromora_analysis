@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on 06.01.22
 
+@author: Eric Sauvageat
+
+This is the main script for the SBUV data treatment in the frame of the GROMORA project
+
+This module contains the code to read and convert to xarray dataset the SBUV downloaded txt files
+
+"""
 import datetime
 import os
 

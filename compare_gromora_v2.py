@@ -1802,7 +1802,7 @@ def compare_mean_diff(gromos, somora, sbuv=None, basefolder=None):
     fig.tight_layout(rect=[0, 0.01, 0.99, 1])
     fig.savefig(basefolder+'rel_diff'+str(year)+'.pdf', dpi=500)
 
-def compare_mean_diff_monthly(gromos, somora, mls=None, sbuv=None):
+def compare_mean_diff_monthly(gromos, somora, mls=None, sbuv=None, outfolder='/scratch/GROSOM/Level2/'):
     
     fs = 22
     year=pd.to_datetime(gromos.time.data[0]).year
@@ -1869,7 +1869,7 @@ def compare_mean_diff_monthly(gromos, somora, mls=None, sbuv=None):
         fig.tight_layout(rect=[0, 0.01, 0.99, 1])
     
         figure.append(fig)
-    save_single_pdf('/scratch/GROSOM/Level2/GROMORA_waccm/monthly_mean_comparison_mls_sbuv_'+str(year)+'.pdf', figure)
+    save_single_pdf(outfolder+'monthly_mean_comparison_mls_sbuv_'+str(year)+'.pdf', figure)
     #fig.suptitle('Ozone relative difference GROMOS-SOMORA')
     
     #fig.savefig('/scratch/GROSOM/Level2/GROMORA_waccm/rel_diff'+str(year)+'.pdf', dpi=500)
@@ -2475,7 +2475,7 @@ if __name__ == "__main__":
     # 'plot_all': the option to reproduce the figures from the manuscript
     # 'anything else': option to read the level 3 data before doing the desired analysis
 
-    strategy = 'plot_all'
+    strategy = 'plot'
     if strategy[0:4]=='read':
         read_gromos=False
         read_somora=False
@@ -2588,7 +2588,7 @@ if __name__ == "__main__":
 
     #####################################################################
     # Relative difference GROMOS vs SOMORA
-    compare_gromora = False
+    compare_gromora = True
     if compare_gromora:
         #map_rel_diff(gromos_clean, somora_clean, freq='6H', basefolder=outfolder)
         compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder, paper=True)
@@ -2597,7 +2597,7 @@ if __name__ == "__main__":
         # #compare_diff_daily(gromos ,somora, gromora_old, pressure_level=[34 ,31, 25, 21, 15, 12], altitudes=[69, 63, 51, 42, 30, 24])
         # compare_mean_diff(gromos, somora, sbuv = None, basefolder=outfolder)
 
-        # compare_mean_diff_monthly(gromos, somora, mls, sbuv)
+        compare_mean_diff_monthly(gromos_clean, somora_clean, mls, sbuv, outfolder=outfolder)
 
     # gromos_linear_fit = gromos_clean.o3_x.where((gromos_clean.o3_p<p_high) & (gromos_clean.o3_p>p_low), drop=True).mean(dim='o3_p').resample(time='1M').mean()#) .polyfit(dim='time', deg=1)
     # somora_linear_fit = somora_clean.o3_x.resample(time='1M').mean().polyfit(dim='time', deg=1)

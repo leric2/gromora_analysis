@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on 06.01.22
+
+@author: Eric Sauvageat
+
+This is the main script for the MERRA-2 data treatment in the frame of the GROMORA project
+
+This is an old module which needs to be updated to the latest GROMORA v2
+
+"""
 
 import datetime
 import os
@@ -10,16 +20,19 @@ import numpy as np
 import pandas as pd
 
 import xarray as xr
-from level2_gromora import *
+from level2_gromora_diagnostics import read_GROMORA_all
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
+import matplotlib.ticker as ticker
 
+from base_tool import *
 
 colormap = 'cividis'
 Mair = 28.9644
 Mozone= 47.9982
 
-# color_gromos = '#d95f02'
-# color_somora = '#1b9e77'
+color_gromos= get_color('GROMOS')
+color_somora= get_color('SOMORA')
+color_shading = 'grey'
 
 def read_merra2_BRN(years = [2017], months = [10]):
 
@@ -303,8 +316,6 @@ def compare_GROMORA_merra2_profiles(gromos_sel, somora_sel, convolved_merra2_gro
     error_gromos = 1e6*np.sqrt(gromos_sel.mean(dim='time').o3_eo**2 + gromos_sel.mean(dim='time').o3_es**2)
     error_somora = 1e6*np.sqrt(somora_sel.mean(dim='time').o3_eo**2 + somora_sel.mean(dim='time').o3_es**2)
 
-    color_shading = 'grey'
-
     mr_somora = somora_sel.o3_mr.data
     mr_gromos = gromos_sel.o3_mr.data
     p_somora_mr = somora_sel.o3_p.data[np.mean(mr_somora,0)>=0.8]
@@ -389,28 +400,34 @@ if __name__ == "__main__":
 
     merra2 = read_merra2_BRN(
         years = yrs, 
-        months = [1,2,3,4,5,6,7,8,9,10,11,12]
+        months = [1]
     )
 
     #o3_merra2 = merra2.O3.where(merra2.altitude<60).data
     #merra2['O3'].data = o3_merra2
     #plot_merra2(merra2)
 
-    time_period = slice("2017-01-01", "2017-12-31")
-    
-    gromos = read_GROMORA_all(basefolder='/storage/tub/instruments/gromos/level2/GROMORA/v1/', 
-    instrument_name='GROMOS',
-    date_slice=time_period, 
-    years=yrs,
-    prefix='_waccm_low_alt_ozone.nc'
-    )
-    somora = read_GROMORA_all(basefolder='/storage/tub/instruments/somora/level2/v1/', 
-    instrument_name='SOMORA',
-    date_slice=time_period, 
-    years=yrs,
-    prefix='_waccm_low_alt_ozone.nc'
-    )
+    time_period = slice("2017-01-01", "2017-01-31")
 
+    fold_somora = '/scratch/GROSOM/Level2/SOMORA/v2/'
+    fold_gromos = '/scratch/GROSOM/Level2/GROMOS/v2/'
+
+    gromos = read_GROMORA_all(
+        basefolder=fold_gromos, 
+        instrument_name='GROMOS',
+        date_slice=time_period, 
+        years=yrs,
+        prefix='_v2.nc',
+        flagged=True
+    )
+    somora = read_GROMORA_all(
+        basefolder=fold_somora, 
+        instrument_name='SOMORA',
+        date_slice=time_period, 
+        years=yrs,
+        prefix='_v2.nc',
+        flagged=True
+    )
 
     #merra2_convolved = convolve_merra2(gromos, merra2)
     #plot_merra2_convolved(merra2_convolved)
