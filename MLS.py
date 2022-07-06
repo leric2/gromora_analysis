@@ -243,9 +243,9 @@ def avk_smooth_mls_old(gromora, ds_mls, folder='/scratch/GROSOM/Level2/'):
     return new_ds, convolved_MLS
 
 
-def avk_smooth_mls_new(gromos_sel, mls_gromos_colloc, instrument_name, basefolder='/scratch/GROSOM/Level2/', sel=True, save_ds=False):
-    time_mls = pd.to_datetime(mls_gromos_colloc.time.data)
-    time_gromora = pd.to_datetime(gromos_sel.time.data)
+def avk_smooth_mls_new(gromora, mls_gromora_colloc, instrument_name, basefolder='/scratch/GROSOM/Level2/', sel=True, save_ds=False):
+    time_mls = pd.to_datetime(mls_gromora_colloc.time.data)
+    time_gromora = pd.to_datetime(gromora.time.data)
     new_ds = xr.Dataset()
     convolved_MLS_list = list()
     gromora_ozone_list = list()
@@ -258,8 +258,8 @@ def avk_smooth_mls_new(gromos_sel, mls_gromos_colloc, instrument_name, basefolde
   #  ds_mls = ds_mls.resample(time='12H').mean()
     for t in time_gromora:
         try:
-            gromora_sel = gromos_sel.sel(time=t, method='nearest', tolerance='2H')
-            ds_mls_sel= mls_gromos_colloc.sel(time=t, method='nearest', tolerance='2H')#) , method='nearest', tolerance='2H')
+            gromora_sel = gromora.sel(time=t, method='nearest', tolerance='2H')
+            ds_mls_sel= mls_gromora_colloc.sel(time=t, method='nearest', tolerance='2H')#) , method='nearest', tolerance='2H')
             avkm = gromora_sel.o3_avkm.data
 
             o3_p_mls = ds_mls_sel[pname].data
@@ -1339,18 +1339,20 @@ def test_plevel(p, time_period, gromos ,gromos_sel, ds_mls_v5, mls_gromos_colloc
 
 if __name__ == "__main__":
     time_period = slice("2009-01-01", "2021-12-31")
-    yrs = [2019]#,2019[2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,]
+    yrs = [2020,2021]#,2019[2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,]
     gromos = read_GROMORA_all(basefolder='/storage/tub/instruments/gromos/level2/GROMORA/v2/', 
     instrument_name='GROMOS',
     date_slice=time_period, 
     years=yrs,
-    prefix='_v2.nc'
+    prefix='_v2.nc',
+    flagged=False
     )
     somora = read_GROMORA_all(basefolder='/storage/tub/instruments/somora/level2/v2/', 
     instrument_name='SOMORA',
     date_slice=time_period, 
     years=yrs,
-    prefix='_v2.nc'
+    prefix='_v2.nc',
+    flagged=False
     )
 
     print('Corrupted retrievals GROMOS : ',len(gromos['o3_x'].where((gromos['o3_x']<0), drop = True))+ len(gromos['o3_x'].where((gromos['o3_x']>1e-5), drop = True))) 
