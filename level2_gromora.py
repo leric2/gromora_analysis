@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on 17.03.22
 
+@author: Eric Sauvageat
+
+This is the old module for the GROMORA level 2 analysis. 
+
+It still contain some useful functions but should not be used as such
+
+"""
 #%%
 import datetime
 import os
@@ -24,7 +33,6 @@ from scipy.odr import *
 
 from GROMORA_harmo.scripts.retrieval import gromora_time
 from flags_analysis import read_level1_flags
-from base_tool import save_single_pdf, get_color
 
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 from matplotlib.lines import Line2D
@@ -36,6 +44,7 @@ cmap_ts = 'cividis'
 
 from MLS import *
 from sbuv import *
+from base_tool import *
 
 plt.rcParams.update({
     "text.usetex": False,
@@ -47,9 +56,9 @@ plt.rcParams['ytick.labelsize'] = 22
 plt.rcParams['font.size'] = 22
 plt.rcParams['axes.titlesize'] = 22
 
-color_gromos= '#d7191c'# '#008837'# '#d95f02'
-color_somora= '#2c7bb6' #7b3294' # '#1b9e77'
-sbuv_color= '#fdae61'
+color_gromos= get_color('GROMOS')
+color_somora= get_color('SOMORA')
+sbuv_color= get_color('SBUV')
 
 MONTH_STR = ['Jan', 'Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 

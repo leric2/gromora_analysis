@@ -8,46 +8,22 @@ Created on 17.03.22
 
 Library containing some basic piece of code to deal with GROMORA L2 data
 
-Attributes:
-    module_level_variable1 (int): Module level variables may be documented in
-        either the ``Attributes`` section of the module docstring, or in an
-        inline docstring immediately following the variable.
-
-        Either form is acceptable, but the two should not be mixed. Choose
-        one convention to document module level variables and be consistent
-        with it.
-
-
 """
 #%%
 import datetime
-from multiprocessing.sharedctypes import Value
 import os
-from re import A
-from typing import ValuesView
-from matplotlib import units
 
 import matplotlib.pyplot as plt
 import netCDF4
 import numpy as np
-from numpy.lib.shape_base import dsplit
 import pandas as pd
 import scipy
-from scipy.odr.odrpack import RealData
-from scipy.stats.stats import RepeatedResults
-from secretstorage import search_items
 
 import xarray as xr
 from scipy import stats
 from scipy.odr import *
 
 from GROMORA_harmo.scripts.retrieval import gromora_time
-
-from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
-from matplotlib.lines import Line2D
-import matplotlib.ticker as ticker
-import matplotlib
-
 from matplotlib.backends.backend_pdf import PdfPages
 
 
@@ -58,7 +34,7 @@ def get_color(instrument_name):
         return '#d7191c'# '#008837'# '#d95f02'
     elif instrument_name=='SOMORA':
         return '#2c7bb6' #7b3294' # '#1b9e77'
-    elif instrument_name=='sbuv':
+    elif instrument_name=='SBUV':
         return'#fdae61'
     elif instrument_name=='MLS':
         return 'k'

@@ -8,26 +8,9 @@ Created on Fri Apr 10 11:37:52 2020
 
 Integration script for IAP instruments
 
-Example:
-    E...
-
-        $ python example_google.py
-
-Attributes:
-    module_level_variable1 (int): Module level variables may be documented in
-        either the ``Attributes`` section of the module docstring, or in an
-        inline docstring immediately following the variable.
-
-        Either form is acceptable, but the two should not be mixed. Choose
-        one convention to document module level variables and be consistent
-        with it.
-
-Todo: all
-
 """
 from abc import ABC
 import os
-import datetime
 
 import numpy as np
 import xarray as xr
@@ -37,19 +20,10 @@ import matplotlib.pyplot as plt
 
 from matplotlib.ticker import (
     MultipleLocator, FormatStrFormatter, AutoMinorLocator)
-from matplotlib.lines import Line2D
-#import plotly_express as px
-from dotenv import load_dotenv
 
-from matplotlib.backends.backend_pdf import PdfPages
+from base_tool import *
 
 instrument_name = "SOMORA"
-
-# date = pd.date_range(start='2019-01-03', end='2019-01-05')
-# meanTb_chunks = [95, 100, 110, 120, 130, 140, 180]
-# lowerBound = [0, 95, 100, 110, 120, 130, 140, 180]
-
-# date = pd.date_range(start='2019-01-30', end='2019-06-18')
 
 def read_level1_flags(basefolder= '/home/esauvageat/Documents/GROMORA/Analysis/ReprocessingLogs/', instrument='GROMOS', year=2016, suffixe=''):
     basename = os.path.join(basefolder,instrument)
@@ -191,5 +165,3 @@ if __name__ == "__main__":
         plt.tight_layout()
         figures.append(fig)
         save_single_pdf(basename+'TN_level1a_dec_2012.pdf', figures)
-
-    # %%

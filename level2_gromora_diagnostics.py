@@ -16,20 +16,12 @@ GROMORA L2 files.
 #%%
 from calendar import month_abbr, month_name
 import os
-from re import A
-from typing import ValuesView
-from matplotlib import units
 import warnings
 
 import matplotlib.pyplot as plt
 import netCDF4
 import numpy as np
-from numpy.lib.shape_base import dsplit
 import pandas as pd
-from scipy.odr.odrpack import RealData
-from scipy.stats.stats import RepeatedResults
-from secretstorage import search_items
-import typhon
 
 import xarray as xr
 from scipy import stats
@@ -112,48 +104,6 @@ def read_GROMORA_all(basefolder, instrument_name, date_slice, years, prefix, fla
 
     gromora_ds = gromora_ds.sel(time=date_slice)
     return gromora_ds
-
-def read_plot_fshift(basefolder, instrument_name, years):
-    ds_fshift = read_fshift_nc(basename=basefolder+instrument_name+'_',years=years)
-    for y in years:
-        fshift_daily_cycle(ds_fshift, slice(str(y)+"-01-01", str(y)+"-12-31"), basename=basefolder+'/'+instrument_name)
-    
-    fig, ax = plt.subplots(1, 1, figsize=(10,8))
-    #ax.set_ylim=(0,100)
-    if instrument_name == 'GROMOS':
-        fshift_lim =(-700,500)
-    elif instrument_name == 'SOMORA':
-        fshift_lim =(0,500)
-    ds_fshift.freq_shift_x.resample(time='4H').mean().plot.line(ax=ax, ylim=fshift_lim, color='k')
-    ax.grid()
-    ax.set_ylabel('freq shift [kHz]')
-    ax.set_xlabel('')
-    ax.set_title('Frequency shift retrieval '+instrument_name)
-    fig.savefig(basefolder+'/'+instrument_name+'_fshift.pdf', dpi=500)
-    return ds_fshift
-
-def constant_altitude_gromora(gromora_ds, z_grid):
-    o3 = gromora_ds.o3_x
-    try:
-        o3_alt = 1e-3*gromora_ds.o3_z
-    except:
-        o3_alt = gromora_ds.h
-
-    o3_const_alt = np.ones((len(z_grid), len(o3.time)))*np.nan
-    for i,t in enumerate(o3.time):
-        o3_const_alt[:,i] = np.interp(z_grid, o3_alt.isel(time=i).values, o3.isel(time=i).values)
-
-    ozone_ds = xr.Dataset(
-        data_vars=dict(
-            o3_x=(['altitude', 'time'], o3_const_alt),
-        ),
-        coords=dict(
-            time=gromora_ds.time,
-            altitude=z_grid
-        ),
-        attrs=dict(description='ozone interpolated at constant altitude grid')
-    )
-    return ozone_ds
 
 def plot_ozone_ts(gromora, instrument_name, freq = '2H', altitude=False, add_MR=True, basefolder='/scratch/GROSOM/'):
     year = pd.to_datetime(gromora.time.values[0]).year

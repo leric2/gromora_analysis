@@ -6,23 +6,7 @@ Created on Fri Apr 10 11:37:52 2020
 
 @author: eric
 
-Integration script for IAP instruments
-
-Example:
-    E...
-
-        $ python example_google.py
-
-Attributes:
-    module_level_variable1 (int): Module level variables may be documented in
-        either the ``Attributes`` section of the module docstring, or in an
-        inline docstring immediately following the variable.
-
-        Either form is acceptable, but the two should not be mixed. Choose
-        one convention to document module level variables and be consistent
-        with it.
-
-Todo: all
+Function to make the diagnostics plots of the GROMORA level 2
 
 """
 
@@ -46,21 +30,12 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
 from matplotlib.ticker import (AutoMinorLocator, FormatStrFormatter,
                                MultipleLocator)
-from xarray.backends import file_manager
-
-from compare_gromora_v2 import plot_figures_gromora_paper
 
 #from cmcrameri import cm
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.sans-serif": ["Free sans"]})
-
-load_dotenv('/home/esauvageat/Documents/ARTS/.env.moench-arts2.4')
-
-# date = pd.date_range(start='2019-01-30', end='219-06-18')
-#date = pd.date_range(start='2017-01-09', end='2017-01-09')
-#date = pd.date_range(start=sys.argv[1], end=sys.argv[2])
 
 def plot_L2(instrument_name = "GROMOS", date = [datetime.date(2017,1,9)], cycles=[14]):
     sys.path.insert(0, './GROMORA_harmo/scripts/retrieval/')

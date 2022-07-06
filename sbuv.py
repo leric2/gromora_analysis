@@ -8,20 +8,10 @@ import matplotlib.pyplot as plt
 import netCDF4
 import numpy as np
 import pandas as pd
-import scipy.io
 
 import xarray as xr
-import matplotlib.ticker as ticker
-
-from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
-
-from typhon.collocations import Collocator
-#from level2_gromora import *
 
 colormap = 'cividis'
-
-# color_gromos = '#d95f02'
-# color_somora = '#1b9e77'
 
 
 def read_SBUV_dailyMean(timerange, SBUV_basename = '/home/esauvageat/Documents/GROMORA/Data/SBUV/', specific_fname='sbuv_v87.mod_v2r1.vmr.payerne_156.txt'):

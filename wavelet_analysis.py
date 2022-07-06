@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on 01.22
 
+@author: Eric Sauvageat
+
+First draft code for wavelet analysis of the GROMORA v2 -> NOT WORKING at the moment.
+
+"""
 import datetime
 import os
 
@@ -21,7 +28,7 @@ cmap = matplotlib.cm.get_cmap('plasma')
 
 import pywt
 from wavelets.wave_python.waveletFunctions import wavelet, wave_signif
-
+from level2_gromora_diagnostics import read_GROMORA_all
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -35,34 +42,6 @@ plt.rcParams['axes.titlesize'] = 22
 
 color_gromos= '#d7191c'# '#008837'# '#d95f02'
 color_somora= '#2c7bb6' #7b3294' # '#1b9e77'
-
-def read_GROMORA_all(basefolder, instrument_name, date_slice, years, prefix):
-    counter = 0
-    for i, y in enumerate(years):
-        if isinstance(prefix, str):
-            filename = basefolder+instrument_name+'_'+str(y)+'_12_31'+ prefix
-        else:
-            filename = basefolder+instrument_name+'_'+str(y)+'_12_31'+ prefix[i]
-        gromora = xr.open_dataset(
-            filename,
-            decode_times=True,
-            decode_coords=True,
-            # use_cftime=True,
-        )
-        if counter == 0:
-            gromora_ds=gromora
-        else:
-            gromora_ds=xr.concat([gromora_ds, gromora], dim='time')
-        
-        counter=counter+1
-        print('Read : '+filename)
-
-    gromora_ds['o3_p'] = gromora_ds['o3_p']/100
-
-    pandas_time_gromos = pd.to_datetime(gromora_ds.time.data)
-
-    gromora_ds = gromora_ds.sel(time=date_slice)
-    return gromora_ds
 
 def wavelet_analysis(o3):
     o3 = o3 - np.mean(o3)
@@ -206,24 +185,29 @@ if __name__ == "__main__":
     else:
         instNameGROMOS = 'GROMOS'
         instNameSOMORA = 'SOMORA'
-        fold_somora = '/storage/tub/instruments/somora/level2/v1/'
-        fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
+        fold_somora = '/scratch/GROSOM/Level2/SOMORA/v2/'
+        fold_gromos = '/scratch/GROSOM/Level2/GROMOS/v2/'
+        prefix_all='.nc'
     #basefolder=_waccm_low_alt_dx10_v2_SB_ozone
     gromos = read_GROMORA_all(basefolder=fold_gromos, 
     instrument_name=instNameGROMOS,
     date_slice=date_slice, 
     years=[yr],#[2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],#[2011,2012,2013,2014,2015,2016,2017,2018,2019,],#[yr],#[],#
-    prefix='_waccm_low_alt_ozone.nc'
+    prefix=prefix_all,
+    flagged=True,
     )
     somora = read_GROMORA_all(basefolder=fold_somora, 
     instrument_name=instNameSOMORA,
     date_slice=date_slice, 
     years=[yr],#[2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],#years=[2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],#[yr],#[2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020],##[yr],#[2011,2012,2013,2014,2015,2016,2017,2018,2019,]
-    prefix='_waccm_low_alt_ozone.nc'
+    prefix=prefix_all,
+    flagged=True,
     )
 
-    o3_strat = gromos.o3_x.sel(o3_p=10,method='nearest').resample(time='1D').mean(dim='time').data
-    o3_strat[o3_strat == np.nan] = 0
+    o3_strat = 1e6*gromos.o3_x.interpolate_na(dim='time', method='nearest').sel(o3_p=10 ,method='nearest').resample(time='1H').mean(dim='time').data
+
+
+    o3_strat[np.isnan(o3_strat)] = 0
     wavelet_analysis(o3_strat)
     
     # dt=1/(265*24)

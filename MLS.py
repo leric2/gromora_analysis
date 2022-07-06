@@ -1,6 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Created on 17.03.22
+
+@author: Eric Sauvageat
+
+This is the main script for the GROMORA MLS comparisons
+
+This module contains the code to create the yearly MLS collocated and convolved file. 
+It basically create 4 new netCDF files per instruments and per year:
+
+1. instrument_name + '_collocation_MLS_'+str(yr)+'.nc': the collocated GROMORA profiles
+2. instrument_name + '_convolved_MLS_'+str(yr)+'.nc': the collocated GROMORA profiles to the convolved MLS profiles (can be different from 1 if there is a problem during the convolution for instance)
+3. 'MLS_collocation_'+instrument_name+'_'+str(yr)+'.nc': the MLS collocated profiles (should correspond to 1.)
+4. 'MLS_convolved_'+instrument_name+'_' +str(yr)+'.nc': the MLS convolved profiles (should correspond to 2.)
+
+To write new files, use the main function located at the end of this file.
+
+"""
 import datetime
 import os
 
@@ -16,14 +34,14 @@ import matplotlib.ticker as ticker
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 
 from typhon.collocations import Collocator
-from base_tool import save_single_pdf, regression_xy
+from base_tool import *
 from level2_gromora_diagnostics import read_GROMORA_all, add_flags_level2_gromora
 from flags_analysis import read_level1_flags
 
-colormap = 'cividis'
-color_gromos= '#d7191c'# '#008837'# '#d95f02'
-color_somora= '#2c7bb6' #7b3294' # '#1b9e77'
-sbuv_color= '#fdae61'
+color_gromos= get_color('GROMOS')
+color_somora= get_color('SOMORA')
+sbuv_color= get_color('SBUV')
+color_shading='grey'
 
 def read_MLS_convolved(instrument_name='GROMOS', folder='/scratch/GROSOM/Level2/MLS/', years=[2018]):
     ds_colloc=xr.Dataset()
