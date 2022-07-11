@@ -165,7 +165,7 @@ def compare_sensi(sensi_ds, param, outname):
 def plot_uncertainty_budget(instrument_name, sensi_ds, param, outname):
     fs = 22
     if instrument_name == 'GROMOS':
-        color_plot =color_gromos
+        color_plot = color_gromos
     else:
         color_plot = color_somora
     ozone = 1e6*sensi_ds.o3_x#.isel(o3_lat=0, o3_lon=0)
@@ -244,7 +244,7 @@ def plot_uncertainty_budget(instrument_name, sensi_ds, param, outname):
 
     axs[0].set_xlabel(r'O$_3$ VMR [ppmv]', fontsize=fs)
 
-    axs[1].legend(fontsize='small') 
+    axs[1].legend(fontsize='small', loc='best', bbox_to_anchor=(0.45, 0.45, 0.5, 0.5)) 
     axs[1].set_xlabel(r'$\Delta $O$_3$ VMR [ppmv]', fontsize=fs)
     axs[1].set_ylabel('', fontsize=fs)
     axs[1].set_xlim(-0.01, 0.5)

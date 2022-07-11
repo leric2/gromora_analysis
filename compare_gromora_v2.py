@@ -2374,7 +2374,7 @@ def plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, 
         plot_L2('GROMOS', date = [datetime.date(2017,1,9)], cycles=[14])
 
         # Fig. 2b and 4
-        plot_L2('SOMORA', date = [datetime.date(2017,1,9)], cycles=[14])
+        plot_L2('SOMORA', date = [datetime.date(2017,1,9)], cycles=[13])
 
     ############################################################
     ############################################################
@@ -2475,7 +2475,7 @@ if __name__ == "__main__":
     # 'plot_all': the option to reproduce the figures from the manuscript
     # 'anything else': option to read the level 3 data before doing the desired analysis
 
-    strategy = 'plot'
+    strategy = 'plot_all'
     if strategy[0:4]=='read':
         read_gromos=False
         read_somora=False
@@ -2524,7 +2524,7 @@ if __name__ == "__main__":
                 somora_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc')
 
     elif strategy=='plot_all':
-        plot_figures_gromora_paper(do_sensitivity = False, do_L2=True, do_comp=True, do_old=False)
+        plot_figures_gromora_paper(do_sensitivity = False, do_L2=True, do_comp=False, do_old=False)
         exit()
     else:
         gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc', date_slice)
