@@ -573,6 +573,8 @@ def compare_seasonal_GROMORA_MLS_profiles(gromos_colloc, gromos_conv, mls_gromos
         else:
             rel_diff_somora = 100*(somora.o3_x-mls_somora.o3_x)/somora.o3_x.mean(dim='time')
             rel_diff_gromos = 100*(gromos.o3_x-mls_gromos.o3_x)/gromos.o3_x.mean(dim='time')
+            # rel_diff_somora = rel_diff_somora.reindex_like(rel_diff_gromos.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
+            # rel_diff_gromos = rel_diff_gromos.reindex_like(rel_diff_somora.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
 
             for a,p in enumerate(p_min):
                 #rel_diff_gromos_prange.extend(rel_diff_gromos.where(rel_diff_gromos.o3_p>p_min[a] , drop=True).where(rel_diff_gromos.o3_p<p_max[a], drop=True).mean(dim='o3_p').data.tolist())
@@ -600,6 +602,8 @@ def compare_seasonal_GROMORA_MLS_profiles(gromos_colloc, gromos_conv, mls_gromos
             mls_somora_convolved = mls_somora_conv.isel(time=somora_groups_conv[s])
             rel_diff_somora_convolved = 100*(somora_convolved.o3_x-mls_somora_convolved.o3_x)/somora_convolved.o3_x.mean(dim='time')
             rel_diff_gromos_convolved = 100*(gromos_convolved.o3_x-mls_gromos_convolved.o3_x)/gromos_convolved.o3_x.mean(dim='time')
+            # rel_diff_somora_convolved = rel_diff_somora_convolved.reindex_like(rel_diff_gromos_convolved.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
+            # rel_diff_gromos_convolved = rel_diff_gromos_convolved.reindex_like(rel_diff_somora_convolved.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
 
             std_somora_convolved = 100*(somora_convolved.o3_x-mls_somora_convolved.o3_x).std(dim='time')/somora_convolved.o3_x.mean(dim='time')
             std_gromos_convolved = 100*(gromos_convolved.o3_x-mls_gromos_convolved.o3_x).std(dim='time')/gromos_convolved.o3_x.mean(dim='time')
