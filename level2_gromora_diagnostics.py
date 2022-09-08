@@ -15,7 +15,7 @@ GROMORA L2 files.
 
 #%%
 from calendar import month_abbr, month_name
-import os
+import os, datetime
 import warnings
 
 import matplotlib.pyplot as plt
@@ -27,10 +27,9 @@ import xarray as xr
 from scipy import stats
 from scipy.odr import *
 from GROMORA_harmo.scripts.retrieval.gromora_time import get_LST_from_GROMORA,datetime64_2_datetime,mjd2k_date,gromora_tz
-
+import level2_gromora
 from flags_analysis import read_level1_flags
 from base_tool import save_single_pdf, get_color
-
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 from matplotlib.lines import Line2D
 import matplotlib.ticker as ticker
@@ -91,7 +90,10 @@ def read_GROMORA_all(basefolder, instrument_name, date_slice, years, prefix, fla
         if counter == 0:
             gromora_ds=gromora
         else:
-            gromora_ds=xr.concat([gromora_ds, gromora], dim='time')
+            try:
+                gromora_ds=xr.concat([gromora_ds, gromora], dim='time', compat='no_conflicts')
+            except:
+                gromora_ds=xr.merge([gromora_ds, gromora])
         
         counter=counter+1
         print('Read : '+filename)
@@ -177,7 +179,7 @@ def plot_ozone_ts(gromora, instrument_name, freq = '2H', altitude=False, add_MR=
 
     fig.savefig(basefolder+instrument_name+'_ozone_time_series_'+str(year)+'.pdf', dpi=500)
 
-def plot_ozone_flags(instrument, gromora, level1b, flags1a, flags1b, pressure_level=[27, 12], calib_version=2):
+def plot_ozone_flags(instrument, gromora, level1b, flags1a, flags1b, pressure_level=[27, 12], calib_version=2, outfolder='/scratch/GROSOM/'):
     year = pd.to_datetime(gromora.time.values[0]).year
     figures = list()
     # fig, axs = plt.subplots(4, 1, sharex=True, figsize=(10,15))
@@ -414,7 +416,7 @@ def retrievals_diagnostics(gromos, level1b, instrument_name, freq='1D', outfolde
     # quality = xr.where(gromos.retrieval_quality.resample(time=freq).mean() == 1, x=np.nan, y=1)
     # quality.plot(ax=axs[1], marker='x', markersize=5, linewidth=0, color='r', label='L2 flags')
     axs[1].set_ylabel('Total cost')
-    axs[1].set_ylim((0.9,1.3))
+    axs[1].set_ylim((0,4))
     # axs[1].legend()
     # axs[3].set_ylabel('L2 flags')
     # axs[3].set_title('Retrievals quality')
@@ -432,7 +434,7 @@ def retrievals_diagnostics(gromos, level1b, instrument_name, freq='1D', outfolde
     level1b.noise_temperature.resample(time=freq).mean().plot(ax=axs[0],color='k')
     axs[0].set_xlabel('')
     axs[0].set_ylabel(r'T$_{rec}$')
-    #axs[3].set_ylim((2500,3100))
+    axs[0].set_ylim((2800,3500))
     
     level1b.tropospheric_opacity.resample(time=freq).mean().plot(ax=axs[1],color='k')
     axs[1].set_xlabel('')
@@ -886,7 +888,7 @@ def yearly_diagnostics(instrument_name, year, gromora, date_slice, level1_folder
     if nice_ts & plots:
         plot_ozone_ts(gromora_clean, instrument_name=instrument_name, freq='12H', altitude=False, basefolder=outfolder )
 
-    level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = read_level1(level1_folder, instrument_name, dateslice=slice('1998-01-01', '2021-12-31'), FFT=FFT)
+    level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = read_level1(level1_folder, instrument_name, dateslice=slice('1994-01-01', '2025-12-31'), FFT=FFT)
     
     level1b_gromos=level1b_gromos.sel(time=date_slice)
 
@@ -930,7 +932,7 @@ def yearly_diagnostics(instrument_name, year, gromora, date_slice, level1_folder
 
         if FFT:
             plot_sinefit(gromora, date_slice, instrument_name, outfolder=outfolder, year=year)
-            plot_ozone_flags(instrument_name, gromora, level1b_gromos, flags1a=gromos_flags_level1a, flags1b=gromos_flags_level1b, pressure_level=[27, 12], calib_version=2)
+            plot_ozone_flags(instrument_name, gromora, level1b_gromos, flags1a=gromos_flags_level1a, flags1b=gromos_flags_level1b, pressure_level=[27, 12], calib_version=2, outfolder=outfolder)
 
 #     # plot_ozone_ts(ozone_const_alt, altitude=True)
 
@@ -943,7 +945,7 @@ def add_flags_level2_gromora(gromos, instrument_name):
         ]
         date2flag.append(slice('2012-07-24','2012-08-08'))
         date2flag.append(slice('2019-01-14','2019-02-12'))
-    else:
+    elif instrument_name == 'SOMORA':
         date2flag =  [
              slice('2012-04-24','2012-04-27')
         ]
@@ -951,6 +953,10 @@ def add_flags_level2_gromora(gromos, instrument_name):
         date2flag.append(slice('2018-01-31','2018-02-11'))
         date2flag.append(slice('2018-07-25','2018-08-23'))
         #date2flag.append(slice('2019-09-27','2020-01-21'))
+    elif instrument_name == 'FB':
+        date2flag =  [
+            slice('2008-08-19','2008-10-03')
+        ]
     #date2flag = np.array(date2flag)
     date_list = [pd.to_datetime(t).date() for t in gromos.time.data]
     #level2_flag = gromos.retrieval_quality
@@ -971,7 +977,7 @@ def add_flags_save(instrument_name, year, gromora, date_slice, level1_folder, ou
 
     print('Saving yearly netCDF for: ',instrument_name,' ', str(year))
 
-    level1b, flags_level1a, flags_level1b = read_level1(level1_folder, instrument_name, dateslice=slice('2009-01-01', '2021-12-31'))
+    level1b, flags_level1a, flags_level1b = read_level1(level1_folder, instrument_name, dateslice=slice('2009-01-01', '2022-12-31'))
     level1b=level1b.sel(time=date_slice)
 
     # Removing some duplicated time values in GROMOS level 1 concatenated files.
@@ -1006,48 +1012,45 @@ def add_flags_save(instrument_name, year, gromora, date_slice, level1_folder, ou
     gromora.tropospheric_opacity.attrs['long_name'] = 'tropospheric_opacity computed with Ingold method during calibration'
     gromora.tropospheric_opacity.attrs['units'] = 'Np'
 
+    gromora.time.encoding['units'] = 'days since 2000-01-01'
+    gromora.time.encoding['calendar'] = 'proleptic_gregorian'
+
     gromora.to_netcdf(outfolder+'/'+instrument_name+'_level2_'+str(yr)+'.nc')
 
-def diagnostics_gromora_FFT(date_slice, yr):
-    instNameGROMOS = 'GROMOS'
-    instNameSOMORA = 'SOMORA'
-    fold_somora = '/storage/tub/instruments/somora/level2/v2/'
-    level1_folder_somora = '/storage/tub/instruments/somora/level1/v2/'
-    fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
-    level1_folder_gromos = '/storage/tub/instruments/gromos/level1/GROMORA/v2/'
-    prefix_all='_v2.nc'
+def diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS'):
+    instrument_name = 'GROMOS'
+
+    if instrument_name=='GROMOS':
+        folder = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
+        level1_folder = '/storage/tub/instruments/gromos/level1/GROMORA/v2/'
+    else:
+        folder = '/storage/tub/instruments/somora/level2/v2/'
+        level1_folder = '/storage/tub/instruments/somora/level1/v2/'
+
+    prefix_all='_v2'
 
     plot_yearly_diagnostics = False
     save = True
  
-    gromos = read_GROMORA_all(basefolder=fold_gromos, 
-    instrument_name=instNameGROMOS,
+    ds = read_GROMORA_all(basefolder=folder, 
+    instrument_name=instrument_name,
     date_slice=date_slice, 
     years=[yr], 
     prefix= prefix_all, #'_v2_noncorrangle.nc'
-    flagged=False
-    )
-    somora = read_GROMORA_all(basefolder=fold_somora, 
-    instrument_name=instNameSOMORA,
-    date_slice=date_slice, 
-    years= [yr],
-    prefix=prefix_all,
-    flagged=False
+    flagged=False,
+    decode_time=False
     )
 
     outfolder = '/scratch/GROSOM/Level2/Diagnostics_v2/'
     
-    gromos = add_flags_level2_gromora(gromos, 'GROMOS')
-    somora = add_flags_level2_gromora(somora, 'SOMORA')
+    ds = add_flags_level2_gromora(ds, instrument_name)
 
     if plot_yearly_diagnostics:
-        somora, somora_clean, level1b_somora, somora_flags_level1a, somora_flags_level1b = yearly_diagnostics('SOMORA', yr, somora, date_slice, level1_folder_somora, outfolder, nice_ts=False, plots=False)
-        gromos, gromos_clean, level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = yearly_diagnostics('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder, nice_ts=False, plots=False)
+        ds, ds_clean, level1b_ds, ds_flags_level1a, ds_flags_level1b = yearly_diagnostics(instrument_name, yr, ds, date_slice, level1_folder, outfolder, nice_ts=True, plots=True)
 
     if save:
-        add_flags_save('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder='/scratch/GROSOM/Level2/GROMOS/v2/')
-        add_flags_save('SOMORA', yr, somora, date_slice, level1_folder_somora, outfolder='/scratch/GROSOM/Level2/SOMORA/v2/')
-        #gromos.to_netcdf('/scratch/GROSOM/Level2/GROMOS/GROMOS_level2_'+str(yr)+'.nc')
+        add_flags_save(instrument_name, yr, ds, date_slice, level1_folder, outfolder='/scratch/GROSOM/Level2/GROMOS/v2/')
+        #ds.to_netcdf('/scratch/GROSOM/Level2/GROMOS/GROMOS_level2_'+str(yr)+'.nc')
         #somora.to_netcdf('/scratch/GROSOM/Level2/SOMORA/SOMORA_level2_'+str(yr)+'.nc')
     #plot_o3_apriori_all(gromos, outfolder)
 
@@ -1057,7 +1060,7 @@ def diagnostics_gromos_FB(date_slice, yr):
     instNameGROMOS = 'GROMOS'
     fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
     level1_folder_gromos = '/storage/tub/instruments/gromos/level1/GROMORA/v2/'
-    prefix_all='_FB.nc'
+    prefix_all='_FB_SB'
 
     plot_yearly_diagnostics = True
     save = True
@@ -1072,11 +1075,35 @@ def diagnostics_gromos_FB(date_slice, yr):
     )
 
     outfolder = '/scratch/GROSOM/Level2/Diagnostics_v2/'
+
+    plot_old_FB = True
+    if plot_old_FB:
+        gromos_old_FB = level2_gromora.read_gromos_old_FB('gromosFB950', date_slice=date_slice)
+        fig, axs = plt.subplots(1, 1, sharex=True, figsize=(20,12))
+        pl = gromos_old_FB.o3_x.resample(time='6H').mean().plot(
+            x='time',
+            y='pressure',
+            ax=axs, 
+            vmin=0,
+            vmax=10,
+            yscale='log',
+            linewidth=0,
+            rasterized=True,
+            cmap='cividis',
+            add_colorbar=True
+        )
+        pl.set_edgecolor('face')
+        axs.set_title('Retrieved Ozone')
+        # ax.set_yscale('log')
+        axs.invert_yaxis()
+        axs.set_ylabel('Pressure [hPa]')
     
-    gromos = add_flags_level2_gromora(gromos, 'GROMOS')
+        fig.savefig(outfolder+'o3_old_FB.pdf', dpi=500)  
+
+    gromos = add_flags_level2_gromora(gromos, 'FB')
 
     if plot_yearly_diagnostics:
-        gromos, gromos_clean, level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = yearly_diagnostics('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder, nice_ts=False, plots=True, FFT=False)
+        gromos, gromos_clean, level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = yearly_diagnostics('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder, nice_ts=False, plots=False, FFT=False)
 
     if save:
         #add_flags_save('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder='/scratch/GROSOM/Level2/GROMOS/v2/')
@@ -1087,7 +1114,7 @@ def diagnostics_gromos_FB(date_slice, yr):
     #plot_o3_apriori_cov('/home/esauvageat/Documents/GROMORA/Data/apriori_cov.npy', gromos, outfolder)
 
 if __name__ == "__main__":
-    yr = 2011
+    yr = 2009
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
     spectro = 'FB'
 
