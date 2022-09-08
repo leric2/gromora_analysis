@@ -24,7 +24,6 @@ from numpy.lib.shape_base import dsplit
 import pandas as pd
 from scipy.odr.odrpack import RealData
 from scipy.stats.stats import RepeatedResults
-from secretstorage import search_items
 import typhon
 
 import xarray as xr
@@ -38,13 +37,15 @@ from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLoc
 from matplotlib.lines import Line2D
 import matplotlib.ticker as ticker
 import matplotlib
-cmap = matplotlib.cm.get_cmap('plasma')
-
-cmap_ts = 'cividis'
 
 from MLS import *
 from sbuv import *
 from base_tool import *
+
+cmap = matplotlib.cm.get_cmap('plasma')
+
+cmap_ts = plt.get_cmap('density')
+
 
 plt.rcParams.update({
     "text.usetex": False,
@@ -141,6 +142,37 @@ def read_gromos_v2021(filename, date_slice):
             pressure=pressure
         ),
         attrs=dict(description='ozone time serie from old gromos routines, version 2021, Klemens Hocke')
+    )
+
+    ds_GROMORA = ds_GROMORA.sel(time=date_slice)
+
+    return ds_GROMORA
+
+def read_gromos_old_FB(filename, date_slice):
+    basename = '/home/esauvageat/Documents/GROMORA/Data/'
+    full_name = os.path.join(basename, filename)
+    v2021 = scipy.io.loadmat(full_name)
+
+    datenum = v2021['time'][0,:]
+   
+    datetime_diff = []
+    for i, t in enumerate(datenum):
+        datetime_diff.append(datetime.datetime.fromordinal(
+            int(t)) + datetime.timedelta(days=datenum[i] % 1) - datetime.timedelta(days=366))
+            
+    pressure = np.flip(1e-2*v2021['p'][0,:])
+
+    ds_GROMORA = xr.Dataset(
+        data_vars=dict(
+            o3_x=(['time', 'pressure'], np.flip(1e6*v2021['o3'], axis=1)),
+            h = (['time', 'pressure'], np.flip(v2021['h'], axis=1)),
+            tropospheric_opacity = (['time'], v2021['tau'][0]),
+        ),
+        coords=dict(
+            time=datetime_diff,
+            pressure=pressure
+        ),
+        attrs=dict(description='ozone time serie from old gromos FB routines, version 950, Klemens Hocke')
     )
 
     ds_GROMORA = ds_GROMORA.sel(time=date_slice)
