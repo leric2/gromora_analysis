@@ -120,6 +120,23 @@ def read_MLS(timerange, vers, filename_MLS):
     ds_mls= ds_mls.sel(time=timerange)
     return ds_mls
 
+def read_MLS_Temperature(timerange, vers, filename_MLS):
+    MLS_basename = '/storage/tub/atmosphere/AuraMLS/Level2_v5/locations/'
+    #filename_MLS = 'AuraMLS_L2GP-O3_v5_400-800.nc'
+
+    ds_mls = xr.open_dataset(os.path.join(MLS_basename, filename_MLS))
+    ds_mls.attrs['history']=''
+    ds_mls = ds_mls.rename({'value':'o3', 'pressure':'p'})
+    ds_mls['p'] =  ds_mls['p']/100
+    
+    #ds_mls = xr.decode_cf(ds_mls)
+    #ds_mls.time.encoding['units'] = 'seconds since 1970-01-01 00:00:00'
+    #ds_mls.time.encoding['calendar'] = "proleptic_gregorian"
+    print('Read MLS dataset file: ', filename_MLS)
+    #ds_mls.to_netcdf('/home/esauvageat/Documents/AuraMLS/ozone_bern_ts.nc', format='NETCDF4')
+    ds_mls= ds_mls.sel(time=timerange)
+    return ds_mls
+
 def select_gromora_corresponding_mls(gromora, instrument_name, ds_mls, time_period, save_ds=False, basename='/scratch/', convolved=True):
     time = pd.date_range(time_period.start + ' 01:30:00', time_period.stop, freq='3H')
     

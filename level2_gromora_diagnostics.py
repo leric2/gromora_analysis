@@ -957,6 +957,9 @@ def add_flags_level2_gromora(gromos, instrument_name):
         date2flag =  [
             slice('2008-08-19','2008-10-03')
         ]
+        # Filterbank repaired
+        date2flag.append(slice('2011-12-05','2011-12-31'))
+
     #date2flag = np.array(date2flag)
     date_list = [pd.to_datetime(t).date() for t in gromos.time.data]
     #level2_flag = gromos.retrieval_quality
@@ -1074,7 +1077,7 @@ def diagnostics_gromos_FB(date_slice, yr):
     decode_time=False
     )
 
-    outfolder = '/scratch/GROSOM/Level2/Diagnostics_v2/'
+    outfolder = '/scratch/GROSOM/Level2/Diagnostics_fascod/'
 
     plot_old_FB = True
     if plot_old_FB:
@@ -1103,7 +1106,7 @@ def diagnostics_gromos_FB(date_slice, yr):
     gromos = add_flags_level2_gromora(gromos, 'FB')
 
     if plot_yearly_diagnostics:
-        gromos, gromos_clean, level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = yearly_diagnostics('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder, nice_ts=False, plots=False, FFT=False)
+        gromos, gromos_clean, level1b_gromos, gromos_flags_level1a, gromos_flags_level1b = yearly_diagnostics('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder, nice_ts=True, plots=True, FFT=False)
 
     if save:
         #add_flags_save('GROMOS', yr, gromos, date_slice, level1_folder_gromos, outfolder='/scratch/GROSOM/Level2/GROMOS/v2/')
@@ -1114,7 +1117,7 @@ def diagnostics_gromos_FB(date_slice, yr):
     #plot_o3_apriori_cov('/home/esauvageat/Documents/GROMORA/Data/apriori_cov.npy', gromos, outfolder)
 
 if __name__ == "__main__":
-    yr = 2009
+    yr = 1995
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
     spectro = 'FB'
 
