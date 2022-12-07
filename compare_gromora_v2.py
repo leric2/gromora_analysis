@@ -567,8 +567,8 @@ def map_rel_diff(gromos, somora ,freq='12H', basefolder='', FB=False):
         ax=axs,
         x='time',
         y='o3_p',
-        vmin=-40,
-        vmax=40,
+        vmin=-1,
+        vmax=1,
         yscale='log',
         linewidth=0,
         rasterized=True,
@@ -1233,7 +1233,6 @@ def compare_diff_daily(gromos, somora,gromora_old, pressure_level = [15,20,25], 
     fig.suptitle('Ozone relative difference SOMORA-GROMOS')
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
     fig.savefig('/scratch/GROSOM/Level2/GROMORA_retrievals_polyfit2/ozone_comparison_old_vs_new_AVK_smoothed'+str(year)+'.pdf', dpi=500)
-
 
 def trends_diff_old_new(gromos,somora, gromos_v2021, somora_old, mls, p_min, p_max, freq='1H', freq_avg='1M', outfolder='/scratch/GROSOM/Level2/GROMORA_retrievals_v2/'):
     #from sklearn.linear_model import LinearRegression
@@ -2153,8 +2152,12 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
         figures2 = list()
         figures3 = list()
         figures4 = list()
-        gro_groups = gromos.groupby('time.season').groups
-        som_groups = somora.groupby('time.season').groups
+        gro_groups = gromos.groupby('time.month').groups
+        som_groups = somora.groupby('time.month').groups
+        avkm_gromos_DT_list=list()
+        avkm_gromos_NT_list=list()
+        avkm_somora_DT_list=list()
+        avkm_somora_NT_list=list()
   
         for j, s in enumerate(gro_groups):
             fig, axs = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10,14))
@@ -2175,6 +2178,8 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
             good_p_somora = somora.o3_p.where(mean_MR_somora>0.2,drop=True)
 
             avkm_gromos = gromos.isel(time=gro_groups[s]).o3_avkm.mean(dim='time')
+            avkm_gromos_DT_list.append(gromos.isel(time=gro_groups[s]).o3_avkm.where(gromos.time.dt.hour.isin([10,11,12,13,14,15,16]), drop=True).mean(dim='time')) #.to_netcdf(outfolder+'avkm_gromos_DT.nc')
+            avkm_gromos_NT_list.append(gromos.isel(time=gro_groups[s]).o3_avkm.where(gromos.time.dt.hour.isin([0,1,2,3,21,22,23]), drop=True).mean(dim='time')) #.to_netcdf(outfolder+'avkm_gromos_NT.nc')
             axs2.plot(1e-3*gromos.isel(time=gro_groups[s]).o3_fwhm.mean(dim='time'), gromos.isel(time=gro_groups[s]).o3_p, color=get_color('GROMOS'), label='FWHM, GROMOS')
             axs2.plot(1e-3*somora.isel(time=som_groups[s]).o3_fwhm.mean(dim='time'), somora.isel(time=som_groups[s]).o3_p, color=get_color('SOMORA'), label='FWHM, SOMORA')
 
@@ -2182,6 +2187,8 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
            # mean_avks_gromos= avkm_gromos.mean(dim='time')
 
             avkm_somora = somora.isel(time=som_groups[s]).o3_avkm.mean(dim='time')
+            avkm_somora_DT_list.append(somora.isel(time=som_groups[s]).o3_avkm.where(somora.time.dt.hour.isin([10,11,12,13,14,15,16]), drop=True).mean(dim='time'))#.to_netcdf(outfolder+'avkm_somora_DT.nc')
+            avkm_somora_NT_list.append(somora.isel(time=som_groups[s]).o3_avkm.where(somora.time.dt.hour.isin([0,1,2,3, 21,22,23]), drop=True).mean(dim='time'))#.to_netcdf(outfolder+'avkm_somora_NT.nc')
             axs2.plot(1e-3*somora.isel(time=som_groups[s]).o3_offset.mean(dim='time'),somora.isel(time=som_groups[s]).o3_p, color=get_color('SOMORA'), linestyle='--', label='AVKs offset, SOMORA')
            # mean_avks_somora = avkm_somora.mean(dim='time')
 
@@ -2207,13 +2214,13 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
             axs3.fill_betweenx(mean_MR_gromos.o3_p.data,mean_MR_gromos.data-0.5*gromos_mr.std(dim='time').data,mean_MR_gromos.data+0.5*gromos_mr.std(dim='time').data, color=get_color('GROMOS'), alpha=0.2)
             #axs[0].axhline(y=good_p_gromos[0], ls='--', color='red')
             #axs[0].axhline(y=good_p_gromos[-1], ls='--', color='red')
-            axs[0].set_title('GROMOS: '+s)
+            #axs[0].set_title('GROMOS: '+s)
             axs[0].set_ylabel('Pressure [hPa]', fontsize=fs)
 
-            axs2.set_title('Resolution and vertical offset: '+s, fontsize=fs+4)
+            #axs2.set_title('Resolution and vertical offset: '+s, fontsize=fs+4)
             axs2.set_xlabel("Resolution and offset [km]", fontsize=fs)
             axs2.set_xlim(-10, 25)
-            axs4.set_title('Errors: '+s, fontsize=fs+4)
+            #axs4.set_title('Errors: '+s, fontsize=fs+4)
             axs2.set_xlabel("Errors [ppmv]", fontsize=fs)
             axs4.set_xlim(0, 1)
             for ax in[axs2, axs4]: 
@@ -2257,7 +2264,7 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
 
             #axs[1].axhline(y=good_p_somora[0], ls='--', color='red')
             #axs[1].axhline(y=good_p_somora[-1], ls='--', color='red')
-            axs[1].set_title('SOMORA: '+s)
+            #axs[1].set_title('SOMORA: '+s)
             axs[0].invert_yaxis()
             axs[0].set_yscale('log')
             axs[1].set_ylabel('')
@@ -2271,7 +2278,7 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
             axs3.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:g}'.format(y)))
             axs3.set_ylabel('Pressure [hPa]', fontsize=fs)
             axs3.set_xlabel(r"MR [\%]", fontsize=fs)
-            axs3.set_title('Measurement response: '+s, fontsize=fs+4)
+            #axs3.set_title('Measurement response: '+s, fontsize=fs+4)
             axs3.grid()
             axs3.legend(fontsize=fs-4)
 
@@ -2312,7 +2319,22 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
             figures2.append(fig2)
             figures3.append(fig3)
             figures4.append(fig4)
-            
+
+        avkm_gromos_DT = xr.concat(avkm_gromos_DT_list, dim='month')
+        avkm_gromos_DT['month'] = np.arange(1,13)
+        avkm_gromos_DT.to_netcdf(outfolder+'avkm_gromos_DT.nc')
+        avkm_somora_DT = xr.concat(avkm_somora_DT_list, dim='month')
+        avkm_somora_DT['month'] = np.arange(1,13)
+        avkm_somora_DT.to_netcdf(outfolder+'avkm_somora_DT.nc')        
+
+        avkm_gromos_NT = xr.concat(avkm_gromos_NT_list, dim='month')
+        avkm_gromos_NT['month'] = np.arange(1,13)
+        avkm_gromos_NT.to_netcdf(outfolder+'avkm_gromos_NT.nc')
+
+        avkm_somora_NT = xr.concat(avkm_somora_NT_list, dim='month')
+        avkm_somora_NT['month'] = np.arange(1,13)
+        avkm_somora_NT.to_netcdf(outfolder+'avkm_somora_NT.nc')
+
         save_single_pdf(outfolder+'AVKs_seasonal_comparison_'+str(gromos.time.data[0])[0:10]+'.pdf', figures)
         save_single_pdf(outfolder+'diagnostics_seasonal_comparison_'+str(gromos.time.data[0])[0:10]+'.pdf', figures2)
         save_single_pdf(outfolder+'mc_seasonal_comparison_'+str(gromos.time.data[0])[0:10]+'.pdf', figures3)
@@ -2744,7 +2766,7 @@ if __name__ == "__main__":
     # 'plot_all': the option to reproduce the figures from the manuscript
     # 'anything else': option to read the level 3 data before doing the desired analysis
 
-    strategy = 'plot_all'
+    strategy = 'plt'
     if strategy[0:4]=='read':
         read_gromos=True
         read_somora=True
@@ -2794,7 +2816,7 @@ if __name__ == "__main__":
                 somora_clean.resample(time='6H').mean().to_netcdf('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc')
 
     elif strategy=='plot_all':
-        plot_figures_gromora_paper(do_sensitivity = True, do_L2=True, do_comp=True, do_old=True)
+        plot_figures_gromora_paper(do_sensitivity = False, do_L2=True, do_comp=True, do_old=True)
         exit()
     else:
         gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc', date_slice)
@@ -2880,7 +2902,7 @@ if __name__ == "__main__":
 
     #####################################################################
     # Averaging kernels
-    plot_avk = False
+    plot_avk = True
     if plot_avk:
         #compare_avkm(gromos, somora, date_slice, outfolder)
         gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)

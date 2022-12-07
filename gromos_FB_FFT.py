@@ -48,7 +48,7 @@ from sbuv import *
 from base_tool import *
 
 plt.rcParams.update({
-    "text.usetex": False,
+    "text.usetex": True,
     "font.family": "serif",
     "font.sans-serif": ["Free sans"]})
 
@@ -663,9 +663,9 @@ if __name__ == "__main__":
     #date_slice=slice('2011-05-01','2011-12-31')
     
     #date_slice=slice('1995-01-01','2021-12-31')
-    date_slice=slice('2009-07-01','2011-10-31')
+    date_slice=slice('2014-01-01','2014-07-31')
  
-    years = [2009, 2010, 2011] #[2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,]
+    years = [2014] #[2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,]
     
     instNameGROMOS = 'GROMOS'
 
@@ -676,7 +676,7 @@ if __name__ == "__main__":
     fold_somora = '/storage/tub/instruments/gromos/level2/GROMORA/v2/' #'/scratch/GROSOM/Level2/GROMOS/v2/'
     fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/' #'/scratch/GROSOM/Level2/GROMOS/v2/' #
     prefix_FFT='_v2'
-    prefix_FB='_FB_SB'
+    prefix_FB= '_v21_antenna'#'_FB_SB'
 
 
     ########################################################################################################
@@ -760,7 +760,7 @@ if __name__ == "__main__":
     sbuv_arosa = read_SBUV_dailyMean(date_slice, SBUV_basename = bn, specific_fname='sbuv_v87.mod_v2r1.vmr.arosa_035.txt')
 
     mls= read_MLS(timerange=date_slice, vers=5, filename_MLS='AuraMLS_L2GP-O3_v5_400-800_BERN_2004-2022.nc')#slice('2003-01-01','2021-12-31')
-    outfolder = '/scratch/GROSOM/Level2/GROMOS_FB_VS_FFT/'
+    outfolder = '/scratch/GROSOM/Level2/GROMOS_FFT_antenna/'
 
     #####################################################################
     # Reading the old gromora datasets
@@ -816,8 +816,8 @@ if __name__ == "__main__":
     # Relative difference GROMOS vs SOMORA
     compare_gromora = True
     if compare_gromora:
-        map_rel_diff(gromos_clean, somora_clean, freq='2D', basefolder=outfolder, FB=True)
-        compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='7D', basefolder=outfolder, paper=True, FB=True)
+        map_rel_diff(gromos_clean, somora_clean, freq='6H', basefolder=outfolder, FB=True)
+        compare_ts_gromora(gromos_clean, somora_clean, date_slice=date_slice, freq='6H', basefolder=outfolder, paper=True, FB=True)
 
         # compute_corr_profile(somora_sel,mls_somora_colloc,freq='7D',basefolder='/scratch/GROSOM/Level2/MLS/')
         # #compare_diff_daily(gromos ,somora, gromora_old, pressure_level=[34 ,31, 25, 21, 15, 12], altitudes=[69, 63, 51, 42, 30, 24])
@@ -830,7 +830,7 @@ if __name__ == "__main__":
 
     #####################################################################
     # Averaging kernels
-    plot_avk = False
+    plot_avk = True
     if plot_avk:
         #compare_avkm(gromos, somora, date_slice, outfolder)
         gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
