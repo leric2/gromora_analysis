@@ -949,6 +949,7 @@ def add_flags_level2_gromora(gromos, instrument_name):
         date2flag =  [
              slice('2012-04-24','2012-04-27')
         ]
+        date2flag.append(slice('2015-02-03','2015-02-05'))
         date2flag.append(slice('2016-09-29','2016-11-03'))
         date2flag.append(slice('2018-01-31','2018-02-11'))
         date2flag.append(slice('2018-07-25','2018-08-23'))
@@ -1021,7 +1022,6 @@ def add_flags_save(instrument_name, year, gromora, date_slice, level1_folder, ou
     gromora.to_netcdf(outfolder+'/'+instrument_name+'_level2_'+str(yr)+'.nc')
 
 def diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS'):
-    instrument_name = 'GROMOS'
 
     if instrument_name=='GROMOS':
         folder = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
@@ -1032,7 +1032,7 @@ def diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS'):
 
     prefix_all='_v2'
 
-    plot_yearly_diagnostics = False
+    plot_yearly_diagnostics = True
     save = True
  
     ds = read_GROMORA_all(basefolder=folder, 
@@ -1117,11 +1117,11 @@ def diagnostics_gromos_FB(date_slice, yr):
     #plot_o3_apriori_cov('/home/esauvageat/Documents/GROMORA/Data/apriori_cov.npy', gromos, outfolder)
 
 if __name__ == "__main__":
-    yr = 1995
+    yr = 2022
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
-    spectro = 'FB'
+    spectro = 'FFT'
 
     if spectro == 'FFT':
-        diagnostics_gromora_FFT(date_slice, yr)
+        diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS')
     elif spectro == 'FB':
         diagnostics_gromos_FB(date_slice, yr)
