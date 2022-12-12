@@ -24,7 +24,6 @@ from numpy.lib.shape_base import dsplit
 import pandas as pd
 from scipy.odr.odrpack import RealData
 from scipy.stats.stats import RepeatedResults
-from secretstorage import search_items
 import typhon
 
 import xarray as xr
@@ -42,8 +41,8 @@ cmap = matplotlib.cm.get_cmap('plasma')
 
 cmap_ts = 'cividis'
 
-from MLS import *
-from sbuv import *
+# from MLS import *
+# from sbuv import *
 from base_tool import *
 
 plt.rcParams.update({

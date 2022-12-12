@@ -41,7 +41,7 @@ cmap_ts = 'cividis'
 
 
 plt.rcParams.update({
-    "text.usetex": True,
+    "text.usetex": False,
     "font.family": "serif",
     "font.sans-serif": ["Free sans"]})
 
@@ -73,7 +73,7 @@ def read_GROMORA_all(basefolder, instrument_name, date_slice, years, prefix, fla
     counter = 0
     for i, y in enumerate(years):
         if flagged:
-            filename = basefolder+instrument_name+'_level2_'+str(y)+'.nc'
+            filename = basefolder+instrument_name+'_level2_'+str(y)+prefix+'.nc'
         else:
             if isinstance(prefix, str):
                 filename = basefolder+instrument_name+'_'+str(y)+'_12_31'+ prefix
