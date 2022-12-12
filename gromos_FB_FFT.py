@@ -335,7 +335,7 @@ def compare_mean_diff(gromos, somora, mls=None, sbuv=None, basefolder=None, corr
     )
     axs[0].set_title(r'O$_3$ VMR', fontsize=fs+4)
     axs[0].set_xlabel('VMR [ppmv]', fontsize=fs)
-    axs[0].set_title(r'FB - FFT', fontsize=fs+2)
+    axs[1].set_title(r'corr - FFT', fontsize=fs+2)
     #axs[1].set_title(r'OG-SB', fontsize=fs+2)
     # pl2 = mean_diff_old.plot(
     #     y='altitude',
@@ -343,7 +343,7 @@ def compare_mean_diff(gromos, somora, mls=None, sbuv=None, basefolder=None, corr
        
     # )
     axs[1].axvline(x=0,ls= '--', color='grey')
-    axs[0].legend(('GROMOS FB','GROMOS FFT','SBUV','MLS', 'AP daytime', 'AP nighttime'))
+    axs[0].legend(('GROMOS corr','GROMOS FFT','SBUV','MLS', 'AP daytime', 'AP nighttime'))
     #axs[0].legend(('SB corr','OG'))
     axs[0].invert_yaxis()
     axs[0].set_xlim(-0.2, 9)
@@ -657,15 +657,15 @@ def compute_seasonal_correlation_FB_FFT(gromos, somora, freq='1M', p_min = [100]
 if __name__ == "__main__":
     yr = 2010
     # The full range:
-    date_slice=slice('2009-07-01','2012-02-02')
+    date_slice=slice('2010-01-01','2021-12-31')
     
     #The GROMOS full series:
     #date_slice=slice('2011-05-01','2011-12-31')
     
     #date_slice=slice('1995-01-01','2021-12-31')
-    date_slice=slice('2014-01-01','2014-07-31')
+    date_slice=slice('2010-01-01','2010-10-31')
  
-    years = [2014] #[2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,]
+    years = [2010] #[2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,]
     
     instNameGROMOS = 'GROMOS'
 
@@ -673,10 +673,10 @@ if __name__ == "__main__":
     v2 = True
     flagged_L2 = False
     
-    fold_somora = '/storage/tub/instruments/gromos/level2/GROMORA/v2/' #'/scratch/GROSOM/Level2/GROMOS/v2/'
-    fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/' #'/scratch/GROSOM/Level2/GROMOS/v2/' #
+    fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v2/' #'/scratch/GROSOM/Level2/GROMOS/v2/'
+    fold_gromos2 = '/storage/tub/instruments/gromos/level2/GROMORA/v3/' #'/scratch/GROSOM/Level2/GROMOS/v2/' #
     prefix_FFT='_v2'
-    prefix_FB= '_v21_antenna'#'_FB_SB'
+    prefix_FB= '_v3'#'_FB_SB'
 
 
     ########################################################################################################
@@ -710,7 +710,7 @@ if __name__ == "__main__":
         
         if read_somora or read_both:
             somora = read_GROMORA_all(
-                basefolder=fold_gromos, 
+                basefolder=fold_gromos2, 
                 instrument_name=instNameGROMOS,
                 date_slice=date_slice, 
                 years=years, #[1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011],#[1995, 1996, 1997, 2006, 2007, 2008, 2009, 2010, 2011]
@@ -725,11 +725,11 @@ if __name__ == "__main__":
         if not flagged_L2:
             if read_gromos or read_both:
                 gromos = add_flags_level2_gromora(gromos, 'GROMOS')
-                gromos_clean = gromos.where(gromos.retrieval_quality==1, drop=True).where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
+                gromos_clean = gromos#.where(gromos.retrieval_quality==1, drop=True).where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
 
             if read_somora or read_both:
                 somora = add_flags_level2_gromora(somora, 'FB')
-                somora_clean = somora.where(somora.retrieval_quality==1, drop=True).where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
+                somora_clean = somora#.where(somora.retrieval_quality==1, drop=True).where(somora.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
         
         #print('GROMOS good quality level2: ', 100*len(gromos_clean.time)/len(pd.date_range('2020-01-01', '2020-12-31 23:00:00', freq='1H')) )
         #print('SOMORA good quality level2: ', 100*len(somora_clean.time)/len(pd.date_range('2020-01-01', '2020-12-31 23:00:00', freq='1H')) )
@@ -835,7 +835,7 @@ if __name__ == "__main__":
         #compare_avkm(gromos, somora, date_slice, outfolder)
         gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
         somora_clean=somora_clean.where(somora_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(somora_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
-        compare_avkm(gromos_clean, somora_clean, date_slice, outfolder, seasonal=True)
+        compare_avkm(gromos_clean, somora_clean, date_slice, outfolder, seasonal=False)
 
     #####################################################################
     # MLS comparisons

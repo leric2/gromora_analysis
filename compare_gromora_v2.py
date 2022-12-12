@@ -567,8 +567,8 @@ def map_rel_diff(gromos, somora ,freq='12H', basefolder='', FB=False):
         ax=axs,
         x='time',
         y='o3_p',
-        vmin=-1,
-        vmax=1,
+        vmin=-15,
+        vmax=15,
         yscale='log',
         linewidth=0,
         rasterized=True,
@@ -585,7 +585,7 @@ def map_rel_diff(gromos, somora ,freq='12H', basefolder='', FB=False):
     # axs.xaxis.set_major_locator(mdates.YearLocator())
     # axs.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
     if FB:
-        axs.set_title('GROMOS FFT - FB',fontsize=fs+4)
+        axs.set_title('GROMOS FFT - corrFFT',fontsize=fs+4)
     else:
         axs.set_title('GROMOS - SOMORA',fontsize=fs+4)
     fig.tight_layout(rect=[0, 0.01, 0.95, 1])
@@ -2076,7 +2076,7 @@ def compare_altitude_old(gromora_old, altitudes = [15,20,25]):
 
 def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
     fs = 32
-    fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,10))
+    fig, axs = plt.subplots(1, 2, sharey=True, figsize=(16,12))
     avkm_gromos = gromos.o3_avkm.sel(time=date_slice)
     mean_avks_gromos= avkm_gromos.mean(dim='time')
     mean_fwhm_gromos= gromos.o3_fwhm.mean(dim='time')
@@ -2085,12 +2085,16 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
     mean_fwhm_somora= somora.o3_fwhm.mean(dim='time')
     p = mean_avks_gromos.o3_p.data
     
+    print('Mean DOF GROMOS:', np.trace(mean_avks_gromos))
+    print('Mean DOF SOMORA:', np.trace(mean_avks_somora))
     gromos_mr = gromos.o3_mr.sel(time=date_slice)
     somora_mr = somora.o3_mr.sel(time=date_slice)
-    mean_MR_gromos= 0.25*gromos_mr.mean(dim='time')
-    mean_MR_somora= 0.25*somora_mr.mean(dim='time')
+    mean_MR_gromos= gromos_mr.mean(dim='time')
+    mean_MR_somora= somora_mr.mean(dim='time')
     good_p_gromos = gromos.o3_p.where(mean_MR_gromos>0.2,drop=True)
     good_p_somora = somora.o3_p.where(mean_MR_somora>0.2,drop=True)
+    
+    o3_z_somora = somora.o3_z.mean(dim='time')
 
     # somora.o3_avkm.sel(time=slice(str(yr)+'-01-01',str(yr)+'-06-30')).mean(dim='time').plot(
     #     ax=axs[0],
@@ -2108,41 +2112,86 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
         #if 0.8 <= np.sum(avk) <= 1.2:
         counter=counter+1
         if np.mod(counter,8)==0:
-            axs[0].plot(avk, p, color=cmap(color_count*0.25+0.01), lw=2)
+            axs[0].plot(avk, p, color='k', lw=1)#cmap(color_count*0.25+0.01)
             color_count = color_count +1            
         else:
             axs[0].plot(avk, p, color='k')
-    mean_MR_gromos.plot(ax=axs[0],y='o3_p', color='red')
-    axs[0].fill_betweenx(mean_MR_gromos.o3_p.data,mean_MR_gromos.data-0.5*gromos_mr.std(dim='time').data,mean_MR_gromos.data+0.5*gromos_mr.std(dim='time').data, color='r', alpha=0.2)
-    axs[0].axhline(y=good_p_gromos[0], ls='--', color='red')
-    axs[0].axhline(y=good_p_gromos[-1], ls='--', color='red')
-    axs[0].set_title('AVKs GROMOS')
+    ax_mr1 = axs[0].twiny()
+    mean_MR_gromos.plot(ax=ax_mr1,y='o3_p', color=get_color('GROMOS'))
+    ax_mr1.fill_betweenx(mean_MR_gromos.o3_p.data,mean_MR_gromos.data-0.5*gromos_mr.std(dim='time').data,mean_MR_gromos.data+0.5*gromos_mr.std(dim='time').data, color=get_color('GROMOS'), alpha=0.2)
+    # axs[0].axhline(y=good_p_gromos[0], ls='--', color='red')
+    # axs[0].axhline(y=good_p_gromos[-1], ls='--', color='red')
+    #axs[0].set_title('AVKs GROMOS')
     counter = 0
     color_count = 0
     for avk in mean_avks_somora:
         #if 0.8 <= np.sum(avk) <= 1.2:
         counter=counter+1
         if np.mod(counter,8)==0:
-            axs[1].plot(avk, p, color=cmap(color_count*0.25+0.01), lw=2)
+            axs[1].plot(avk, p, color='k', lw=1) #cmap(color_count*0.25+0.01)
             color_count = color_count +1  
         else:
             axs[1].plot(avk, p, color='k')
-    mean_MR_somora.plot(ax=axs[1], y='o3_p', color='red')
-    axs[1].fill_betweenx(mean_MR_somora.o3_p.data,mean_MR_somora.data-0.5*somora_mr.std(dim='time').data,mean_MR_somora.data+0.5*somora_mr.std(dim='time').data, color='r', alpha=0.2)
-    axs[1].axhline(y=good_p_somora[0], ls='--', color='red')
-    axs[1].axhline(y=good_p_somora[-1], ls='--', color='red')
+    ax_mr2 = axs[1].twiny()
+    mean_MR_somora.plot(ax=ax_mr2, y='o3_p', color=get_color('SOMORA'))
+    ax_mr2.fill_betweenx(mean_MR_somora.o3_p.data,mean_MR_somora.data-0.5*somora_mr.std(dim='time').data,mean_MR_somora.data+0.5*somora_mr.std(dim='time').data, color=get_color('SOMORA'), alpha=0.2)
+    # axs[1].axhline(y=good_p_somora[0], ls='--', color='red')
+    # axs[1].axhline(y=good_p_somora[-1], ls='--', color='red')
     axs[0].invert_yaxis()
     axs[0].set_yscale('log')
-    axs[1].set_title('AVKs SOMORA')
+    #axs[1].set_title('AVKs SOMORA')
+    axs[0].text(
+        0.92,
+        0.01,
+        '(a)',
+        transform=axs[0].transAxes,
+        verticalalignment="bottom",
+        horizontalalignment="left",
+        fontsize=fs
+    )
+    axs[1].text(
+        0.92,
+        0.01,
+        '(b)',
+        transform=axs[1].transAxes,
+        verticalalignment="bottom",
+        horizontalalignment="left",
+        fontsize=fs
+    )
+    for ax in [ax_mr1, ax_mr2]:
+        ax.grid(axis='x', which='both')
+        ax.set_xlim(0,1.35)
+        ax.set_xlabel('Measurement contribution', fontsize=fs)
+        ax.xaxis.set_major_locator(MultipleLocator(0.5))
+        ax.xaxis.set_minor_locator(MultipleLocator(0.25))
 
     for ax in axs:
-        ax.grid()
-        ax.set_xlim(-0.1, 0.35)
-        ax.set_xlabel('AVKs')
-        ax.set_ylabel('Pressure [hPa]')
-        ax.xaxis.set_major_locator(MultipleLocator(0.25))
-        ax.xaxis.set_minor_locator(MultipleLocator(0.125))
-    fig.tight_layout(rect=[0, 0.01, 0.95, 1])
+        ax.grid(axis='y', which='both')
+        ax.set_xlim(-0.05, 0.3)
+        ax.set_ylim(200, 5e-3)
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:g}'.format(y)))
+                
+        ax.set_xlabel('Averaging kernels', fontsize=fs)
+        ax.xaxis.set_major_locator(MultipleLocator(0.1))
+        #ax.xaxis.set_minor_locator(MultipleLocator(0.125))
+
+    y1z=1e-3*o3_z_somora.sel(o3_p=200, tolerance=100,method='nearest')
+    y2z=1e-3*o3_z_somora.sel(o3_p=5e-3, tolerance=1,method='nearest')
+    ax2res = ax.twinx()
+    #ax2.set_yticks(level2_data[spectro].isel(time=i).o3_z) #ax2.set_yticks(altitude)
+    ax2res.set_ylim(y1z,y2z)
+    fmt = FormatStrFormatter("%.0f")
+    loc=MultipleLocator(base=10)
+    ax2res.yaxis.set_major_formatter(fmt)
+    ax2res.yaxis.set_major_locator(loc)
+    ax2res.set_ylabel('Altitude [km] ', fontsize=fs)
+    ax2res.set_xlabel('')
+    ax2res.tick_params(axis='both', which='major')
+
+    axs[0].set_ylabel('Pressure [hPa]', fontsize=fs)
+    axs[1].set_ylabel('')
+
+    fig.tight_layout(rect=[0, 0.01, 0.99, 1])
     fig.savefig(outfolder+'AVKs_comparison_'+str(avkm_gromos.time.data[0])[0:10]+'.pdf', dpi=500)
     
     
@@ -2226,7 +2275,7 @@ def compare_avkm(gromos, somora, date_slice, outfolder, seasonal=False):
             for ax in[axs2, axs4]: 
                 ax.set_yscale('log')
                 ax.invert_yaxis()
-                ax.set_ylim(500, 2e-3)
+                ax.set_ylim(200, 5e-3)
                 ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:g}'.format(y)))
                 ax.set_ylabel('Pressure [hPa]', fontsize=fs)
                 
@@ -2907,7 +2956,7 @@ if __name__ == "__main__":
         #compare_avkm(gromos, somora, date_slice, outfolder)
         gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
         somora_clean=somora_clean.where(somora_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(somora_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
-        compare_avkm(gromos_clean, somora_clean, date_slice, outfolder, seasonal=True)
+        compare_avkm(gromos_clean, somora_clean, date_slice, outfolder, seasonal=False)
 
     #####################################################################
     # MLS comparisons

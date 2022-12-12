@@ -36,7 +36,7 @@ import matplotlib.ticker as ticker
 import matplotlib
 cmap = matplotlib.cm.get_cmap('plasma')
 
-cmap_ts = 'cividis'
+cmap_ts = plt.get_cmap('density') 
 
 
 plt.rcParams.update({
@@ -416,7 +416,7 @@ def retrievals_diagnostics(gromos, level1b, instrument_name, freq='1D', outfolde
     # quality = xr.where(gromos.retrieval_quality.resample(time=freq).mean() == 1, x=np.nan, y=1)
     # quality.plot(ax=axs[1], marker='x', markersize=5, linewidth=0, color='r', label='L2 flags')
     axs[1].set_ylabel('Total cost')
-    axs[1].set_ylim((0,4))
+    axs[1].set_ylim((0.5,1.5))
     # axs[1].legend()
     # axs[3].set_ylabel('L2 flags')
     # axs[3].set_title('Retrievals quality')
@@ -881,7 +881,7 @@ def yearly_diagnostics(instrument_name, year, gromora, date_slice, level1_folder
     #somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>0)&(somora['o3_x']<1e-5), drop = True)
     gromora['o3_x'] = 1e6*gromora['o3_x'].where((gromora['o3_x']>gromora['o3_x'].valid_min)&(gromora['o3_x']<gromora['o3_x'].valid_max), drop = True)
 
-    gromora_clean = gromora.where(gromora.retrieval_quality==1, drop=True)#.where(gromora.o3_mr>0.8)
+    gromora_clean = gromora#.where(gromora.retrieval_quality==1, drop=True)#.where(gromora.o3_mr>0.8)
     if plots:
         compare_with_apriori(gromora, instrument_name,  freq='6H', date_slice=date_slice, basefolder=outfolder)
 
@@ -1024,13 +1024,13 @@ def add_flags_save(instrument_name, year, gromora, date_slice, level1_folder, ou
 def diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS'):
 
     if instrument_name=='GROMOS':
-        folder = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'
+        folder = '/storage/tub/instruments/gromos/level2/GROMORA/v3/'
         level1_folder = '/storage/tub/instruments/gromos/level1/GROMORA/v2/'
     else:
         folder = '/storage/tub/instruments/somora/level2/v2/'
         level1_folder = '/storage/tub/instruments/somora/level1/v2/'
 
-    prefix_all='_v2'
+    prefix_all='_v3'
 
     plot_yearly_diagnostics = True
     save = True
@@ -1044,7 +1044,7 @@ def diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS'):
     decode_time=False
     )
 
-    outfolder = '/scratch/GROSOM/Level2/Diagnostics_v2/'
+    outfolder = '/scratch/GROSOM/Level2/Diagnostics_v3/'
     
     ds = add_flags_level2_gromora(ds, instrument_name)
 
@@ -1052,7 +1052,7 @@ def diagnostics_gromora_FFT(date_slice, yr, instrument_name='GROMOS'):
         ds, ds_clean, level1b_ds, ds_flags_level1a, ds_flags_level1b = yearly_diagnostics(instrument_name, yr, ds, date_slice, level1_folder, outfolder, nice_ts=True, plots=True)
 
     if save:
-        add_flags_save(instrument_name, yr, ds, date_slice, level1_folder, outfolder='/scratch/GROSOM/Level2/GROMOS/v2/')
+        add_flags_save(instrument_name, yr, ds, date_slice, level1_folder, outfolder='/scratch/GROSOM/Level2/GROMOS/v3/')
         #ds.to_netcdf('/scratch/GROSOM/Level2/GROMOS/GROMOS_level2_'+str(yr)+'.nc')
         #somora.to_netcdf('/scratch/GROSOM/Level2/SOMORA/SOMORA_level2_'+str(yr)+'.nc')
     #plot_o3_apriori_all(gromos, outfolder)
@@ -1117,7 +1117,7 @@ def diagnostics_gromos_FB(date_slice, yr):
     #plot_o3_apriori_cov('/home/esauvageat/Documents/GROMORA/Data/apriori_cov.npy', gromos, outfolder)
 
 if __name__ == "__main__":
-    yr = 2022
+    yr = 2010
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
     spectro = 'FFT'
 
