@@ -159,34 +159,61 @@ def read_ECMWF(date, location='BERN'):
     ecmwf_ts = ecmwf_ts.isel(loc=0)
     ecmwf_ts['pressure'] = ecmwf_ts['pressure']/100
     #o3_ecmwf = ecmwf_ts.isel(loc=0).ozone_mass_mixing_ratio
+
+    print('ECMWF data read from:', ECMWF_folder)
     return ecmwf_ts
 
-def read_ERA5(date, location='SwissPlateau'):
-    ECMWF_folder = '/storage/tub/atmosphere/ecmwf/locations/Switzerland_era5/'
-    counter = 0
-    for d in date:
-        ECMWF_file = os.path.join(
-            ECMWF_folder, 'ecmwf_era5_'+location+'_'+d.strftime('%Y%m%d')+'.nc')
+def read_ERA5(date, years=[2017], location='SwissPlateau', daybyday=False, save=False):
+   
+    if daybyday:
+        ECMWF_folder = '/storage/tub/atmosphere/ecmwf/locations/SwissPlateau/'
+        counter = 0
+        for d in date:
+            ECMWF_file = os.path.join(
+                ECMWF_folder, 'ecmwf_era5_'+location+'_'+d.strftime('%Y%m%d')+'.nc')
 
-        ecmwf_og = xr.open_dataset(
-            ECMWF_file,
-            decode_times=True,
-            decode_coords=True,
-            use_cftime=False,
-        )
-       # ecmwf_og.swap_dims({'level':'pressure'} )
-        # for i in range(len(ecmwf_og.time.data)):
-        #     ecmwf = ecmwf_og.isel(loc=0, time=i)
-        #     ecmwf = read_add_geopotential_altitude(ecmwf)
-        if counter == 0:
-            ecmwf_ts = ecmwf_og
-        else:
-            ecmwf_ts = xr.concat([ecmwf_ts, ecmwf_og], dim='time')
+            ecmwf_og = xr.open_dataset(
+                ECMWF_file,
+                decode_times=True,
+                decode_coords=True,
+                use_cftime=False,
+            )
+           # ecmwf_og.swap_dims({'level':'pressure'} )
+            # for i in range(len(ecmwf_og.time.data)):
+            #     ecmwf = ecmwf_og.isel(loc=0, time=i)
+            #     ecmwf = read_add_geopotential_altitude(ecmwf)
+            if counter == 0:
+                ecmwf_ts = ecmwf_og
+            else:
+                ecmwf_ts = xr.concat([ecmwf_ts, ecmwf_og], dim='time')
 
-        counter = counter + 1
+            counter = counter + 1
 
-    ecmwf_ts = ecmwf_ts.isel(loc=0)
-    ecmwf_ts['pressure'] = ecmwf_ts['pressure']/100
+        ecmwf_ts = ecmwf_ts.isel(loc=0)
+        ecmwf_ts['pressure'] = ecmwf_ts['pressure']/100
+        if save:
+            ecmwf_ts.to_netcdf('/scratch/GROSOM/DiurnalCycles/climatology/era5_switzerland_'+d.strftime('%Y')+'.nc')
+    else:
+        ECMWF_folder = '/scratch/GROSOM/DiurnalCycles/climatology/'
+        counter = 0
+        for year in years:
+            ECMWF_file = os.path.join(
+                ECMWF_folder, 'era5_switzerland_'+str(year)+'.nc')
+
+            ecmwf_og = xr.open_dataset(
+                ECMWF_file,
+                decode_times=True,
+                decode_coords=True,
+                use_cftime=False,
+            )
+            if counter == 0:
+                ecmwf_ts = ecmwf_og
+            else:
+                ecmwf_ts = xr.concat([ecmwf_ts, ecmwf_og], dim='time')
+
+            counter = counter + 1
+
+    print('ECMWF data read from:', ECMWF_folder)
     #o3_ecmwf = ecmwf_ts.isel(loc=0).ozone_mass_mixing_ratio
     return ecmwf_ts
 
@@ -465,17 +492,24 @@ def plot_ozone_map(filename, freq='12H'):
 if __name__ == "__main__":
     ozone_maps_only = True
 
-    if ozone_maps_only:
-        # plot_ozone_map('/scratch/GROSOM/DiurnalCycles/event_2015_april/ozone_ecmwf_all_2015-04-15.nc')
+    for yr in [2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020, 2021]:
 
-        plot_ozone_map('/home/esauvageat/Downloads/ecmwf_all_europe_2015_01_15.nc', freq='6H')
-    else:
-        date = pd.date_range(start='2014-12-25', end='2015-01-15', freq='1D')
-        ozone_ts = list()
-        for d in date:
-            ts = extract_date(d, p_level=10, zoom=[24, -28, 70, 37], extra='')
-            o3 = plot_date(d, p_levels = [10], square =False, polar = True, zoom= None, extra='')
-            ozone_ts.append(ts)
+        range_ecmwf = slice(str(yr)+'-01-01',str(yr)+'-12-31')
+        date = pd.date_range(start=range_ecmwf.start, end=range_ecmwf.stop)
 
-        ozone_ds = xr.merge(ozone_ts)
-        ozone_ds.to_netcdf('/home/esauvageat/Downloads/ecmwf_all_europe_'+d.strftime('%Y_%m_%d')+'.nc')
+        ecmwf_ts = read_ERA5(date, years=[yr], location='SwissPlateau', daybyday=True, save=True)
+
+    # if ozone_maps_only:
+    #     # plot_ozone_map('/scratch/GROSOM/DiurnalCycles/event_2015_april/ozone_ecmwf_all_2015-04-15.nc')
+
+    #     plot_ozone_map('/home/esauvageat/Downloads/ecmwf_all_europe_2015_01_15.nc', freq='6H')
+    # else:
+    #     date = pd.date_range(start='2014-12-25', end='2015-01-15', freq='1D')
+    #     ozone_ts = list()
+    #     for d in date:
+    #         ts = extract_date(d, p_level=10, zoom=[24, -28, 70, 37], extra='')
+    #         o3 = plot_date(d, p_levels = [10], square =False, polar = True, zoom= None, extra='')
+    #         ozone_ts.append(ts)
+
+    #     ozone_ds = xr.merge(ozone_ts)
+    #     ozone_ds.to_netcdf('/home/esauvageat/Downloads/ecmwf_all_europe_'+d.strftime('%Y_%m_%d')+'.nc')
