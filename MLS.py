@@ -21,6 +21,7 @@ To write new files, use the main function located at the end of this file.
 """
 import datetime
 import os
+from time import time
 
 import matplotlib.pyplot as plt
 import netCDF4
@@ -42,6 +43,8 @@ color_gromos= get_color('GROMOS')
 color_somora= get_color('SOMORA')
 sbuv_color= get_color('SBUV')
 color_shading='grey'
+
+colormap='cividis'
 
 def read_MLS_convolved(instrument_name='GROMOS', folder='/scratch/GROSOM/Level2/MLS/', years=[2018]):
     ds_colloc=xr.Dataset()
@@ -109,6 +112,23 @@ def read_MLS(timerange, vers, filename_MLS):
             ),
             attrs=dict(description='ozone time series at bern')
         )
+    #ds_mls = xr.decode_cf(ds_mls)
+    #ds_mls.time.encoding['units'] = 'seconds since 1970-01-01 00:00:00'
+    #ds_mls.time.encoding['calendar'] = "proleptic_gregorian"
+    print('Read MLS dataset file: ', filename_MLS)
+    #ds_mls.to_netcdf('/home/esauvageat/Documents/AuraMLS/ozone_bern_ts.nc', format='NETCDF4')
+    ds_mls= ds_mls.sel(time=timerange)
+    return ds_mls
+
+def read_MLS_Temperature(timerange, vers, filename_MLS):
+    MLS_basename = '/storage/tub/atmosphere/AuraMLS/Level2_v5/locations/'
+    #filename_MLS = 'AuraMLS_L2GP-O3_v5_400-800.nc'
+
+    ds_mls = xr.open_dataset(os.path.join(MLS_basename, filename_MLS))
+    ds_mls.attrs['history']=''
+    ds_mls = ds_mls.rename({'value':'o3', 'pressure':'p'})
+    ds_mls['p'] =  ds_mls['p']/100
+    
     #ds_mls = xr.decode_cf(ds_mls)
     #ds_mls.time.encoding['units'] = 'seconds since 1970-01-01 00:00:00'
     #ds_mls.time.encoding['calendar'] = "proleptic_gregorian"
@@ -570,6 +590,8 @@ def compare_seasonal_GROMORA_MLS_profiles(gromos_colloc, gromos_conv, mls_gromos
         else:
             rel_diff_somora = 100*(somora.o3_x-mls_somora.o3_x)/somora.o3_x.mean(dim='time')
             rel_diff_gromos = 100*(gromos.o3_x-mls_gromos.o3_x)/gromos.o3_x.mean(dim='time')
+            # rel_diff_somora = rel_diff_somora.reindex_like(rel_diff_gromos.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
+            # rel_diff_gromos = rel_diff_gromos.reindex_like(rel_diff_somora.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
 
             for a,p in enumerate(p_min):
                 #rel_diff_gromos_prange.extend(rel_diff_gromos.where(rel_diff_gromos.o3_p>p_min[a] , drop=True).where(rel_diff_gromos.o3_p<p_max[a], drop=True).mean(dim='o3_p').data.tolist())
@@ -597,6 +619,8 @@ def compare_seasonal_GROMORA_MLS_profiles(gromos_colloc, gromos_conv, mls_gromos
             mls_somora_convolved = mls_somora_conv.isel(time=somora_groups_conv[s])
             rel_diff_somora_convolved = 100*(somora_convolved.o3_x-mls_somora_convolved.o3_x)/somora_convolved.o3_x.mean(dim='time')
             rel_diff_gromos_convolved = 100*(gromos_convolved.o3_x-mls_gromos_convolved.o3_x)/gromos_convolved.o3_x.mean(dim='time')
+            # rel_diff_somora_convolved = rel_diff_somora_convolved.reindex_like(rel_diff_gromos_convolved.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
+            # rel_diff_gromos_convolved = rel_diff_gromos_convolved.reindex_like(rel_diff_somora_convolved.time, method='nearest', tolerance='2H').dropna(dim='time', how='all')
 
             std_somora_convolved = 100*(somora_convolved.o3_x-mls_somora_convolved.o3_x).std(dim='time')/somora_convolved.o3_x.mean(dim='time')
             std_gromos_convolved = 100*(gromos_convolved.o3_x-mls_gromos_convolved.o3_x).std(dim='time')/gromos_convolved.o3_x.mean(dim='time')
@@ -1355,9 +1379,7 @@ def test_plevel(p, time_period, gromos ,gromos_sel, ds_mls_v5, mls_gromos_colloc
     mls_gromos_colloc_convolved.sel(time=time_period).sel(o3_p=p, method='nearest').o3_x.plot(marker='d', linewidth=0, ax=axs, label='mls conv')
     axs.legend()
 
-if __name__ == "__main__":
-    time_period = slice("2009-01-01", "2021-12-31")
-    yrs = [2020,2021]#,2019[2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,]
+def process_FFT(yrs, time_period):
     gromos = read_GROMORA_all(basefolder='/storage/tub/instruments/gromos/level2/GROMORA/v2/', 
     instrument_name='GROMOS',
     date_slice=time_period, 
@@ -1476,3 +1498,54 @@ if __name__ == "__main__":
     # #    # plot_gromora_and_corresponding_MLS(new_gromos, mls_gromos_colloc)
 
    #  compare_pressure(gromos_sel, mls_somora_colloc, pressure_level=[31, 25, 21, 15, 12], add_sun=False, freq='1D', basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/')
+
+
+def process_FB_GROMOS(yrs, time_period):
+    gromos = read_GROMORA_all(basefolder='/storage/tub/instruments/gromos/level2/GROMORA/v2/', 
+    instrument_name='GROMOS',
+    date_slice=time_period, 
+    years=yrs,
+    prefix='_v2.nc',
+    flagged=False,
+    decode_time = False
+    )
+
+    print('Corrupted retrievals GROMOS : ',len(gromos['o3_x'].where((gromos['o3_x']<0), drop = True))+ len(gromos['o3_x'].where((gromos['o3_x']>1e-5), drop = True))) 
+    # gromos = gromos.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
+    # somora = somora.drop(['y', 'yf', 'bad_channels','y_baseline', 'f'] )
+    #gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>0)&(gromos['o3_x']<1e-5), drop = True)
+    #somora['o3_x'] = 1e6*somora['o3_x'].where((somora['o3_x']>0)&(somora['o3_x']<1e-5), drop = True)
+    gromos['o3_x'] = 1e6*gromos['o3_x'].where((gromos['o3_x']>gromos['o3_x'].valid_min)&(gromos['o3_x']<gromos['o3_x'].valid_max), drop = True)
+    
+    gromos = add_flags_level2_gromora(gromos, 'GROMOS')
+
+    gromos_clean = gromos.where(gromos.retrieval_quality==1, drop=True).where(gromos.level2_flag==0, drop=True)#.where(~gromos.o3_x.mean('o3_p').isnull(), drop=True)#.where(gromos.o3_mr>0.8)
+    gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<1, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-1, drop=True).where(gromos_clean.o3_xa.mean(dim='o3_p')<5e-5, drop=True).where(gromos_clean.o3_xa.mean(dim='o3_p')>-1e-5, drop=True)
+
+    ds_mls_v5 = read_MLS(timerange = time_period, vers=5, filename_MLS='AuraMLS_L2GP-O3_v5_400-800_BERN_2004-2022.nc')
+
+    for yr in yrs:
+        plot_period = slice(str(yr)+"-01-01", str(yr)+"-12-31")
+        print('Processing year '+str(yr))
+
+        gromos_sel, mls_gromos_colloc=select_gromora_corresponding_mls(
+            gromos_clean, 
+            'GROMOS',
+            ds_mls_v5, 
+            plot_period, 
+            save_ds=True,
+            convolved=False,
+            basename='GROMOS_collocation_'
+            )
+
+        gromos_sel, mls_gromos_colloc_convolved_new  = avk_smooth_mls_new(
+            gromos_sel, mls_gromos_colloc, 'GROMOS',basefolder='/scratch/GROSOM/Level2/MLS/', sel=True, save_ds=True
+        )
+
+        plot_gromora_and_corresponding_MLS(gromos_sel, ds_mls_v5.sel(time=plot_period), mls_gromos_colloc_convolved_new, freq='2D', basename='GROMOS_2daily')
+
+
+if __name__ == "__main__":
+    time_period = slice("2006-01-01", "2009-12-31")
+    yrs = [2006, 2007,2008]#,2019[2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,]
+    process_FB_GROMOS(yrs, time_period)
