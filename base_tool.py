@@ -26,6 +26,8 @@ from scipy.odr import *
 from GROMORA_harmo.scripts.retrieval import gromora_time
 from matplotlib.backends.backend_pdf import PdfPages
 
+from datetime import datetime, timedelta
+
 
 MONTH_STR = ['Jan', 'Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -73,6 +75,50 @@ def utc_to_lst(gromora):
     gromora['sunrise'] = sunrise_da
     gromora['sunset'] = sunset_da
     return gromora
+
+def get_LST_from_UTC(date, lat, lon, print_option=False, check_format=True):
+    # local time zone for GROMOS and SOMORA:
+    local_timezone = gromora_time.timezone('Europe/Zurich')
+
+    #dt = utc.localize(datetime64_2_datetime(date))
+    if check_format:
+        if np.issubdtype(date.dtype, np.datetime64):
+            date = gromora_time.datetime64_2_datetime(date).replace(tzinfo=gromora_time.timezone('UTC'))
+
+    if print_option:
+        print('UTC time: ',date) 
+    local_time =  date.astimezone(local_timezone)
+    if print_option:
+        print('Local time: ',local_time)
+
+    doy = pd.to_datetime(date).dayofyear
+
+    eot = gromora_time.equation_of_time(doy-1)
+    if print_option:
+        print('Equation of time : ', str(eot))
+
+    lstm = 15*local_time.utcoffset().seconds/3600
+    tc = gromora_time.time_correction_factor(lon, lstm, eot)
+
+    lst = local_time + timedelta(minutes=tc)
+    
+    lst = lst.replace(tzinfo=None)
+
+    ha = gromora_time.hour_angle(lst)
+
+    #ha_sunset, ha_NOAA= hour_angle_sunset(doy, lat)
+    if print_option:
+        print('Hour angle: ', str(ha))
+    #  print('Hour angle sunset: ', str(ha_sunset))
+    # print('Hour angle NOAA: ', str(ha_NOAA))
+    
+    # if np.abs(ha) > np.abs(ha_NOAA):
+    #     night = True
+    # else:
+    #     night = False
+
+    sza, night = gromora_time.solar_zenith_angle(ha, doy, lat)
+    return lst, ha, sza, night, tc
 
 def linear(p, x):
     m, c = p
