@@ -38,8 +38,8 @@ from matplotlib.lines import Line2D
 import matplotlib.ticker as ticker
 import matplotlib
 
-from MLS import *
-from sbuv import *
+# from MLS import *
+# from sbuv import *
 from base_tool import *
 
 cmap = matplotlib.cm.get_cmap('plasma')

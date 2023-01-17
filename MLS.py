@@ -77,12 +77,25 @@ def read_MLS_convolved(instrument_name='GROMOS', folder='/scratch/GROSOM/Level2/
     return gromora_sel, ds_gromora_conv, ds_colloc, ds_mls_conv
 
 
-def read_MLS(timerange, vers, filename_MLS):
+def read_MLS(timerange, vers, filename_MLS, save_LST=False):
     if vers == 5:
         MLS_basename = '/storage/tub/atmosphere/AuraMLS/Level2_v5/locations/'
         #filename_MLS = 'AuraMLS_L2GP-O3_v5_400-800.nc'
     
         ds_mls = xr.open_dataset(os.path.join(MLS_basename, filename_MLS))
+
+        # Add LST:
+        if save_LST:
+            ds_mls['UT_time'] = ds_mls['time']
+            lst_list = list()
+            for i, t in enumerate(ds_mls['time'].data):
+                mls_lst =  pd.to_datetime(t).replace(hour=0, minute=0,second=0, microsecond=0) + datetime.timedelta(hours=ds_mls.isel(time=i).local_solar_time.item())
+                lst_list.append(mls_lst)
+
+            ds_mls['time'] = pd.to_datetime(lst_list)
+            ds_mls = ds_mls.sortby('time')
+            ds_mls.to_netcdf(os.path.join(MLS_basename, filename_MLS[:-3]+'_lst.nc'))
+
         ds_mls.attrs['history']=''
         ds_mls = ds_mls.rename({'value':'o3', 'pressure':'p'})
         ds_mls['o3'] =  ds_mls['o3']*1e6
@@ -112,6 +125,7 @@ def read_MLS(timerange, vers, filename_MLS):
             ),
             attrs=dict(description='ozone time series at bern')
         )
+
     #ds_mls = xr.decode_cf(ds_mls)
     #ds_mls.time.encoding['units'] = 'seconds since 1970-01-01 00:00:00'
     #ds_mls.time.encoding['calendar'] = "proleptic_gregorian"

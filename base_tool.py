@@ -28,18 +28,33 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from datetime import datetime, timedelta
 
+from typhon.plots import (figsize, cmap2rgba, cmap2txt)
+
+
+
+# ax.set_prop_cycle(color=)
 
 MONTH_STR = ['Jan', 'Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 def get_color(instrument_name):
+    colors = cmap2rgba('qualitative1', 7)
+
     if instrument_name=='GROMOS':
-        return '#d7191c'# '#008837'# '#d95f02'
+        return colors[0]# return '#d7191c'# '#008837'# '#d95f02'
     elif instrument_name=='SOMORA':
-        return '#2c7bb6' #7b3294' # '#1b9e77'
+        return colors[1]#return '#2c7bb6' #7b3294' # '#1b9e77'
     elif instrument_name=='SBUV':
-        return'#fdae61'
+        return colors[2]#return '#fdae61'
     elif instrument_name=='MLS':
-        return 'k'
+        return colors[3]#return '#abd9e9'
+    elif instrument_name=='GDOC':
+        return colors[4] #'#fdae61'#colors[3]#colors[4]#return '#fdae61'
+    elif instrument_name=='WACCM':
+        return colors[6]##
+    elif instrument_name=='ECMWF':
+        return 'k' ##
+    elif instrument_name=='BASCOE':
+        return colors[2] ##
     else:
         raise ValueError
 
@@ -152,6 +167,7 @@ def regression_xy(x, y, x_err, y_err, lin=True):
 #     SSReg = np.sum((y_pred - np.mean(y))**2)
 #     R2 = SSReg/SST
 #     return R2
+
 
 def calcR2_wikipedia(y, y_pred):
     # Mean value of the observed data y.
