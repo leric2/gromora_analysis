@@ -125,8 +125,8 @@ def read_gromos_v2021(filename, date_slice):
    
     datetime_diff = []
     for i, t in enumerate(datenum):
-        datetime_diff.append(datetime.datetime.fromordinal(
-            int(t)) + datetime.timedelta(days=datenum[i] % 1) - datetime.timedelta(days=366))
+        datetime_diff.append(datetime.fromordinal(
+            int(t)) + timedelta(days=datenum[i] % 1) - timedelta(days=366))
             
     pressure = np.flip(1e-2*v2021['p'][0,:])
 
@@ -157,8 +157,8 @@ def read_gromos_old_FB(filename, date_slice):
    
     datetime_diff = []
     for i, t in enumerate(datenum):
-        datetime_diff.append(datetime.datetime.fromordinal(
-            int(t)) + datetime.timedelta(days=datenum[i] % 1) - datetime.timedelta(days=366))
+        datetime_diff.append(datetime.fromordinal(
+            int(t)) + timedelta(days=datenum[i] % 1) - timedelta(days=366))
             
     pressure = np.flip(1e-2*v2021['p'][0,:])
 
@@ -187,8 +187,8 @@ def read_old_SOMORA(filename, date_slice):
     datenum = somora.time.data
     datetime_diff = []
     for i, t in enumerate(datenum):
-        datetime_diff.append(datetime.datetime.fromordinal(
-            int(t)) + datetime.timedelta(days=datenum[i] % 1) - datetime.timedelta(days=366))
+        datetime_diff.append(datetime.fromordinal(
+            int(t)) + timedelta(days=datenum[i] % 1) - timedelta(days=366))
 
     somora['time'] = datetime_diff 
         
@@ -205,8 +205,8 @@ def read_old_GROMOA_diff(filename, date_slice):
     altitude = diff['DIFF_G'][0:30,3]
     datetime_diff = []
     for i, t in enumerate(datenum):
-        datetime_diff.append(datetime.datetime.fromordinal(
-            int(t)) + datetime.timedelta(days=datenum[i] % 1) - datetime.timedelta(days=366))
+        datetime_diff.append(datetime.fromordinal(
+            int(t)) + timedelta(days=datenum[i] % 1) - timedelta(days=366))
             
 
     o3_gromos = np.ones((192,len(altitude)))*np.nan

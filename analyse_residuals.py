@@ -20,8 +20,9 @@ from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLoc
 
 from typhon.collocations import Collocator
 # from level2_gromora import * 
-%matplotlib widget
-
+#%matplotlib widget
+import warnings
+warnings.filterwarnings('ignore')
 #from scipy.fft import fft, fftfreq
 
 colormap = 'cividis'
@@ -257,22 +258,22 @@ def read_all_baseline(instrument, outfolder, date_slice):
 
 if __name__ == "__main__":
 
-    yr = 2019
+    yr = 2009
     date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
-    date_slice=slice('2019-01-01','2021-12-31')
-    outfolder = '/scratch/GROSOM/Level2/GROMORA_waccm/'
-    compute_new = False
+    date_slice=slice('2009-10-01','2009-12-31')
+    outfolder = '/scratch/GROSOM/Level2/GROMOS_v3/'
+    compute_new = True
     reprocessed = True
 
-    instrument = 'SOMORA'
+    instrument = 'GROMOS'
     if instrument == 'GROMOS':
         instNameGROMOS = 'GROMOS'
         pref = 'GROMOS_'+str(yr)+'_12_31'
-        folder =  '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
+        folder =  '/storage/tub/instruments/gromos/level2/GROMORA/v3/'
         # folder =  '/scratch/GROSOM/Level2/GROMORA_waccm/'
         freq_basename = '/scratch/GROSOM/Level1/frequency_grid_GROMOS.nc'
 
-        prefix= '_res_residuals.nc'
+        prefix= '_v3_residuals.nc'
     elif instrument == 'SOMORA':
         pref = 'SOMORA_'+str(yr)+'_12_31'
         folder ='/storage/tub/instruments/somora/level2/v2/'
@@ -304,8 +305,6 @@ if __name__ == "__main__":
             )
 
         level2_dataset_res = level2_dataset_res.sel(time=date_slice, drop = True) 
-
-    
 
 
     # level2_dataset = read_GROMORA_all(basefolder=folder, 
