@@ -16,10 +16,31 @@ import matplotlib.ticker as ticker
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 
 
-def read_bascoe(filename):
+def read_bascoe(filename, save_LST=False):
 
     bascoe = xr.open_dataset(filename)
-        
+    
+    #bascoe = xr.open_dataset('/storage/tub/atmosphere/BASCOE/bascoe_bern_2010-2020_lst.nc')
+    #bascoe = xr.open_dataset('/storage/tub/atmosphere/BASCOE/bascoe_bern_2010-2020_lst_NOAA.nc')
+    # approx_lst = bascoe['UT_time'] + pd.Timedelta(hours=SWISS_LON*24/360)
+    #bascoe = bascoe.sel(time=slice('2010-06-01','2015-07-31'))
+    
+    # Add LST:
+    if save_LST:
+        bascoe['UTC_time'] = bascoe['time'].data
+    
+        lst_list = list()
+        sza_list = list()
+        for i, t in enumerate(bascoe['time'].data):
+            lst_bascoe, ha, sza, nigh, tc = utc2lst_NOAA(bascoe.isel(time=i).time.data, SWISS_LAT, SWISS_LON)
+            lst_list.append(lst_bascoe)
+            sza_list.append(sza)
+    
+        bascoe['sza_NOAA'] = ('time', sza_list)
+        bascoe['time'] = pd.to_datetime(lst_list)
+        bascoe = bascoe.sortby('time')
+    
+        bascoe.to_netcdf('/storage/tub/atmosphere/BASCOE/bascoe_bern_2010-2020_lst_NOAA.nc')
     return bascoe
 
 def plot_basic_ts(bascoe):

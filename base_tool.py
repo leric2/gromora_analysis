@@ -44,7 +44,7 @@ def get_color(instrument_name):
     elif instrument_name=='SBUV':
         return colors[2]#return '#fdae61'
     elif instrument_name=='MLS':
-        return colors[3]#return '#abd9e9'
+        return 'k' #return '#abd9e9'  colors[3]
     elif instrument_name=='GDOC':
         return colors[4] #'#fdae61'#colors[3]#colors[4]#return '#fdae61'
     elif instrument_name=='WACCM':
