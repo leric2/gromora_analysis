@@ -546,9 +546,10 @@ if __name__ == "__main__":
     if plot_line_shape:
         fs = 18
         lw=2
-        temperature = gromos_clean.temperature_profile.isel(time=0).values
+        t=2200
+        temperature = gromos_clean.temperature_profile.isel(time=t).values
         pressure = gromos_clean.o3_p.values
-        o3_vmr = 1e-6*gromos_clean.o3_x.isel(time=0).values
+        o3_vmr = 1e-6*gromos_clean.o3_x.isel(time=t).values
         fD, hwhm_doppler = doppler_broadening(142e9, temperature)
         fL, hwhm_p = pressure_broadening(142e9, temperature, pressure, o3_vmr)
         
@@ -556,15 +557,15 @@ if __name__ == "__main__":
 
         ax.loglog(1e-6*hwhm_doppler, pressure, color=color_gromos, linewidth=lw, label=r'Doppler')
         ax.loglog(1e-6*hwhm_p, pressure, color=color_somora, linewidth=lw, label=r'Pressure')
-        ax.loglog(1e-6*(hwhm_doppler+hwhm_p), pressure, '--', color='k', linewidth=lw, label=r'Line width')
+        ax.loglog(1e-6*(hwhm_doppler+hwhm_p), pressure, '--', color='k', linewidth=lw, label=r'Total')
         #ax.fill_betweenx(1e-3*gromos_clean.o3_z.mean(dim='time').values,33e-3,1e3, color='k', alpha=0.1)
         ax.invert_yaxis()
         ax.set_ylim(400,5e-3)
         ax.set_xlim(1e-2,1e3)
-        y1z=1e-3*gromos_clean.o3_z.sel(o3_p=400, tolerance=100,method='nearest').mean(dim='time')
-        y2z=1e-3*gromos_clean.o3_z.sel(o3_p=0.005, tolerance=0.002,method='nearest').mean(dim='time')
+        y1z=1e-3*gromos_clean.isel(time=t).o3_z.sel(o3_p=400, tolerance=100,method='nearest')
+        y2z=1e-3*gromos_clean.isel(time=t).o3_z.sel(o3_p=0.005, tolerance=0.002,method='nearest')
         ax2 = ax.twinx()
-        ax2.set_yticks(gromos_clean.o3_z.mean(dim='time')) #ax2.set_yticks(altitude)
+        ax2.set_yticks(gromos_clean.isel(time=t).o3_z) #ax2.set_yticks(altitude)
         ax2.set_ylim(y1z,y2z)
         fmt = FormatStrFormatter("%.0f")
         loc=MultipleLocator(base=10)
