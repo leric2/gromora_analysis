@@ -46,7 +46,7 @@ ozone = {
     'polar_vmin': 3,
     'polar_vmax': 10,
     'global_vmin': 3,
-    'global_vmax': 10,
+    'global_vmax': 8,
 }
 temperature = {
     'varname':'t',
@@ -57,8 +57,8 @@ temperature = {
     'colorbar_title': 'T [K]',
     'polar_vmin': 185,
     'polar_vmax': 230,
-    'global_vmin': 200,
-    'global_vmax': 250,
+    'global_vmin': 220,
+    'global_vmax': 280,
 }
 humidity = {
     'varname':'q',
@@ -254,6 +254,34 @@ def read_ECMWF_global(date):
 
     return ecmwf_og
 
+def read_ERA5_global(date):
+    ECMWF_folder = '/storage/tub/atmosphere/ecmwf/era5/europe/'
+    year = date.year
+    ECMWF_file = os.path.join(ECMWF_folder+str(year), 'ECMWF_ERA5_'+date.strftime('%Y%m%d')+'.nc')
+
+    ecmwf_og = xr.open_dataset(
+        ECMWF_file,
+        decode_times=True,
+        decode_coords=True,
+        use_cftime=False,
+    )
+
+    pressure = pressure_levels_global(lnsp=ecmwf_og['lnsp'].values[:,0,:,:])
+    da_pressure = xr.DataArray(
+        data=pressure,
+        dims=['time','level','latitude','longitude'],
+        coords=[
+            ecmwf_og.time,
+            ecmwf_og.level,
+            ecmwf_og.latitude,
+            ecmwf_og.longitude,
+        ]
+    )
+
+    ecmwf_og['pressure'] = da_pressure
+
+    return ecmwf_og
+
 def extract_var_plevel(ecmwf_global, var=ozone, p_level=100, NH=True, coarsen=True, polar = True, zoom=None):
     if polar:
         mean_p = ecmwf_global.pressure.where(ecmwf_global.latitude>60).mean(dim=['time','latitude','longitude'])/100
@@ -284,7 +312,10 @@ def extract_var_plevel(ecmwf_global, var=ozone, p_level=100, NH=True, coarsen=Tr
 def extract_plevel_zoom(ecmwf_global, p_level=100, zoom=None):
 
     #o3_ecmwf = ecmwf_ts.isel(loc=0).ozone_mass_mixing_ratio
-    ecmwf_o3 = ecmwf_global.where(ecmwf_global.latitude>zoom[0], drop=True).where(ecmwf_global.longitude>zoom[1], drop=True).where(ecmwf_global.latitude<zoom[2], drop=True).where(ecmwf_global.longitude<zoom[3], drop=True)
+    if zoom is not None:
+        ecmwf_o3 = ecmwf_global.where(ecmwf_global.latitude>zoom[0], drop=True).where(ecmwf_global.longitude>zoom[1], drop=True).where(ecmwf_global.latitude<zoom[2], drop=True).where(ecmwf_global.longitude<zoom[3], drop=True)
+    else:
+        ecmwf_o3 = ecmwf_global
    
     mean_p = ecmwf_o3.pressure.mean(dim=['time','latitude','longitude'])/100
     lvl = np.abs(mean_p.values-p_level).argmin()
@@ -395,13 +426,12 @@ def plot_ts(ts, ax, var, polar):
     # o3.plot.imshow(x='time')
     #fig2.savefig(instrument.level2_folder+'/'+'ozone_ts_16_ecmwf_payerne.pdf')
 
-def extract_date(date, p_level = 10, zoom=None, extra = ''):
-    basefolder = '/home/esauvageat/Documents/ECMWF/plots/'
-    basefolder = '/storage/tub/atmosphere/ecmwf/daily_plots/'+str(date.year)+'/'
-    #ecmwf_ds = read_ECMWF( date, 'Bern')
-
+def extract_date(date, p_level = 10, zoom=None, ERA5=True, extra = ''):
     #date=date[0]
-    ecmwf_global = read_ECMWF_global(date)
+    if ERA5:
+        ecmwf_global = read_ERA5_global(date) 
+    else:
+        ecmwf_global = read_ECMWF_global(date)
 
     ts = extract_plevel_zoom(ecmwf_global, p_level, zoom)
     return ts
@@ -486,30 +516,79 @@ def plot_ozone_map(filename, freq='12H'):
 
         fig_list.append(fig)    
 
-    save_single_pdf('/home/esauvageat/Downloads/europe_maps_all_'+str(t)+'.pdf', fig_list)
+    save_single_pdf('/home/esauvageat/Downloads/europe_maps_era_'+str(t)+'.pdf', fig_list)
+
+def degree_formatter(x, pos):
+    """Create degree ticklabels for radian data., from https://www.radiativetransfer.org/misc/typhon/doc/typhon.plots.cm.html"""
+    return '{:.0f}\N{DEGREE SIGN}'.format(np.rad2deg(x))
+
+
+def plot_situation_map(filename, freq='12H'):
+    ecmwf = xr.open_dataset(filename)
+    ecmwf = ecmwf.resample(time=freq).mean()
+    fig_list=list()
+    for i,t in enumerate(ecmwf.time.data):
+        fig, axs = plt.subplots(figsize=(16,12), nrows=2, ncols=2, subplot_kw={'projection': ccrs.Orthographic(central_longitude=7, central_latitude=47, globe=None)})
+        
+        h2o_vmr = ecmwf.isel(time=i).q/(1-ecmwf.isel(time=i).q)
+
+        # downscaling for wind:
+        ecmwf_wind = ecmwf.coarsen(latitude=4, longitude=4, boundary='pad').mean()
+        u, v = ecmwf_wind.isel(time=i).u.data, ecmwf_wind.isel(time=i).v.data
+        wdir = np.arctan2(u, v) + np.pi
+
+        axs[0,0] = plot_ts(ecmwf.isel(time=i).t, axs[0,0], var=temperature, polar=False)
+        axs[0,1]= plot_ts(ecmwf.isel(time=i).o3,  axs[0,1], var=ozone, polar=False)
+        #axs[1,0] = plot_ts(h2o_vmr, axs[1,0], var=humidity, polar=False)
+        sm = axs[1,0].quiver(ecmwf_wind.isel(time=i).longitude.data ,ecmwf_wind.isel(time=i).latitude.data, u, v, wdir, cmap=plt.get_cmap('phase',8), transform=ccrs.PlateCarree())
+        axs[1,1] = plot_ts(ecmwf.isel(time=i).vo, axs[1,1], var=relative_vorticity, polar=False)
+        
+        # Nice colorbar for wind: https://www.radiativetransfer.org/misc/typhon/doc/typhon.plots.cm.html
+        cb = fig.colorbar(sm, ax=axs[1,0], label='Wind direction', format=degree_formatter, pad=0.02, shrink=0.6)
+        cb.set_ticks(np.linspace(0, 2 * np.pi, 9))
+        cb.set_label(label='Wind direction', size=22)
+        cb.ax.tick_params(labelsize=22) 
+        axs[1,0].set_title('Winds: ' + pd.to_datetime(t).strftime('%Y-%m-%d:%H:%M'), fontsize=24)
+        
+        for ax in axs[0,:]:
+            ax.coastlines()
+            ax.gridlines()
+
+        for ax in axs[1,:]:
+            ax.coastlines()
+            ax.gridlines()
+        # fig.suptitle('Ozone: '+ str(t), fontsize=22)
+        fig.tight_layout(rect=[0, 0.01, 0.99, 1])
+
+        fig_list.append(fig)    
+
+    save_single_pdf('/home/esauvageat/Downloads/europe_maps_era_'+str(t)+'.pdf', fig_list)
 
 
 if __name__ == "__main__":
     ozone_maps_only = True
 
-    for yr in [2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020, 2021]:
+    # for yr in [2015]:
+    dlat = 28
+    dlon = 30
+    #     range_ecmwf = slice(str(yr)+'-01-01',str(yr)+'-01-10')
+    #     date = pd.date_range(start=range_ecmwf.start, end=range_ecmwf.stop)
 
-        range_ecmwf = slice(str(yr)+'-01-01',str(yr)+'-12-31')
-        date = pd.date_range(start=range_ecmwf.start, end=range_ecmwf.stop)
+    #     ecmwf_ts = read_ERA5(date, years=[yr], location='SwissPlateau', daybyday=True, save=False)
 
-        ecmwf_ts = read_ERA5(date, years=[yr], location='SwissPlateau', daybyday=True, save=True)
+    if ozone_maps_only:
+        # plot_ozone_map('/scratch/GROSOM/DiurnalCycles/event_2015_april/ozone_ecmwf_all_2015-04-15.nc')
 
-    # if ozone_maps_only:
-    #     # plot_ozone_map('/scratch/GROSOM/DiurnalCycles/event_2015_april/ozone_ecmwf_all_2015-04-15.nc')
+        #plot_ozone_map('/home/esauvageat/Downloads/ecmwf_all_europe_2015_01_15.nc', freq='6H')
+        plot_situation_map('/home/esauvageat/Downloads/ecmwf_all_NH_5hPa_2014_03_28.nc', freq='6H')
+    else:
+        date = pd.date_range(start='2014-03-16', end='2014-03-28', freq='1D')
+        ozone_ts = list()
+        for d in date:
+            print(d.strftime('%Y_%m_%d')+' extracted')
+            ts = extract_date(d, p_level=5, zoom=[30, -180, 90, 180], ERA5=False, extra='')
+            #o3 = plot_date(d, p_levels = [10], square =False, polar = True, zoom= None, extra='') zoom=[24, -28, 70, 37],
+            ozone_ts.append(ts)
 
-    #     plot_ozone_map('/home/esauvageat/Downloads/ecmwf_all_europe_2015_01_15.nc', freq='6H')
-    # else:
-    #     date = pd.date_range(start='2014-12-25', end='2015-01-15', freq='1D')
-    #     ozone_ts = list()
-    #     for d in date:
-    #         ts = extract_date(d, p_level=10, zoom=[24, -28, 70, 37], extra='')
-    #         o3 = plot_date(d, p_levels = [10], square =False, polar = True, zoom= None, extra='')
-    #         ozone_ts.append(ts)
-
-    #     ozone_ds = xr.merge(ozone_ts)
-    #     ozone_ds.to_netcdf('/home/esauvageat/Downloads/ecmwf_all_europe_'+d.strftime('%Y_%m_%d')+'.nc')
+        ozone_ds = xr.merge(ozone_ts)
+        ozone_ds.to_netcdf('/home/esauvageat/Downloads/ecmwf_all_NH_5hPa_'+d.strftime('%Y_%m_%d')+'.nc')

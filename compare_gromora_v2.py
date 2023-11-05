@@ -374,7 +374,7 @@ def compare_pressure_mls_sbuv_paper(gromos, somora, mls, sbuv, p_min, p_max, add
     if sbuv is None:
         axs[1].legend(['MLS', 'GROMOS','SOMORA', ], ncol=4, loc=4, fontsize=fs-2)
     else:
-        axs[1].legend(['MLS', 'SBUV', 'GROMOS','SOMORA', ], ncol=4, loc=4, fontsize=fs-2)
+        axs[1].legend(['MLS', 'SBUV', 'GROMOS FFT','GROMOS FB'], ncol=4, loc=4, fontsize=fs-2)
     #axs[0].legend(['OG','SB corr'], loc=1, fontsize=fs-2)
 
     axs[0].set_ylim(1,3)
@@ -386,7 +386,7 @@ def compare_pressure_mls_sbuv_paper(gromos, somora, mls, sbuv, p_min, p_max, add
 
     for ax in axs:
         ax.grid()
-        #ax.set_xlim(pd.to_datetime('2009-09-23'), pd.to_datetime('2022-01-01'))
+        ax.set_xlim(pd.to_datetime('1994-10-01'), pd.to_datetime('2022-12-31'))
         ax.set_ylabel('O$_3$ [ppmv]', fontsize=fs)
         ax.yaxis.set_major_locator(MultipleLocator(1))
         ax.yaxis.set_minor_locator(MultipleLocator(0.5))
@@ -561,8 +561,10 @@ def map_rel_diff(gromos, somora ,freq='12H', basefolder='', FB=False):
     fs=24
     year=pd.to_datetime(gromos.time.data[0]).year
     fig, axs = plt.subplots(1, 1, sharex=True, figsize=(18,12))
-    
-    rel_diff = 100*(gromos.o3_x.resample(time=freq).mean()- somora.o3_x.resample(time=freq).mean())/gromos.o3_x.resample(time=freq).mean()
+    diff = gromos.o3_x.resample(time=freq).mean()- somora.o3_x.resample(time=freq).mean()
+    diff2 = somora.o3_x.resample(time=freq).mean()- gromos.o3_x.resample(time=freq).mean()
+    # diff2.mean(dim='time').to_netcdf('/scratch/GROSOM/Level2/GROMOS_v3/mean_bias_FB-FFT_v21.nc')
+    rel_diff = 100*diff/gromos.o3_x.resample(time=freq).mean()
     rel_diff.plot(
         ax=axs,
         x='time',
@@ -2812,7 +2814,7 @@ if __name__ == "__main__":
     yr = 2021
     #date_slice=slice(str(yr)+'-01-01',str(yr)+'-12-31')
     # The full range:
-    date_slice=slice('2010-01-31','2010-02-01')
+    date_slice=slice('2014-01-01','2017-12-31')
     
     # The GROMOS full series:
     #date_slice=slice('2009-07-01','2021-12-31')
@@ -2825,7 +2827,7 @@ if __name__ == "__main__":
     # Date range for tests:
     #date_slice=slice('2018-05-01','2018-08-31')
 
-    years = [2010] #[2009, 2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020, 2021]
+    years = [2005,2006,2007,2008] #[2009, 2010, 2011, 2012,2013,2014,2015,2016,2017,2018,2019,2020, 2021]
     
     instNameGROMOS = 'GROMOS'
     instNameSOMORA = 'SOMORA'
@@ -2849,7 +2851,7 @@ if __name__ == "__main__":
     # 'plot_all': the option to reproduce the figures from the manuscript
     # 'anything else': option to read the level 3 data before doing the desired analysis
 
-    strategy = 'plt'
+    strategy = 'plot_all'
     if strategy[0:4]=='read':
         read_gromos=True
         read_somora=True
@@ -2902,7 +2904,7 @@ if __name__ == "__main__":
         plot_figures_gromora_paper(do_sensitivity = False, do_L2=True, do_comp=False, do_old=False)
         exit()
     else:
-        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v2.nc', date_slice)
+        gromos = read_GROMORA_concatenated('/scratch/GROSOM/Level2/GROMOS_level3_6H_v3.nc', date_slice)
         somora = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc', date_slice)
         
         gromos_clean = gromos.where(gromos.level2_flag==0, drop=True)#.where(gromos.o3_mr>0.8)
@@ -2917,7 +2919,7 @@ if __name__ == "__main__":
     sbuv = read_SBUV_dailyMean(date_slice, SBUV_basename = bn, specific_fname='sbuv_v87.mod_v2r1.vmr.payerne_156.txt')
 
     mls= read_MLS(date_slice, vers=5, filename_MLS='AuraMLS_L2GP-O3_v5_400-800_BERN.nc')
-    outfolder = '/scratch/GROSOM/Level2/GROMORA_retrievals_v2/'
+    outfolder = '/scratch/GROSOM/Level2/GROMOS_v3/'
 
     #####################################################################
     # Reading the old gromora datasets
@@ -2985,7 +2987,7 @@ if __name__ == "__main__":
 
     #####################################################################
     # Averaging kernels
-    plot_avk = True
+    plot_avk = False
     if plot_avk:
         #compare_avkm(gromos, somora, date_slice, outfolder)
         gromos_clean=gromos_clean.where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')<10, drop=True).where(gromos_clean.o3_avkm.mean(dim='o3_p_avk')>-10, drop=True)
@@ -2994,9 +2996,9 @@ if __name__ == "__main__":
 
     #####################################################################
     # MLS comparisons
-    compare_with_MLS = False
+    compare_with_MLS = True
     if compare_with_MLS:
-        gromos_colloc, gromos_conv, mls_gromos_colloc, mls_gromos_conv, somora_colloc, somora_conv, mls_somora_colloc, mls_somora_conv = read_all_MLS(yrs = years)
+        gromos_colloc, gromos_conv, mls_gromos_colloc, mls_gromos_conv, somora_colloc, somora_conv, mls_somora_colloc, mls_somora_conv = read_all_MLS(yrs = years, prefix_gromos='FB_', gromos_folder='/scratch/GROSOM/Level2/MLS/v3/')
 
         # compute_correlation_MLS(gromos_sel, mls_gromos_colloc_conv, freq='1M', pressure_level=[ 15,20,25], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/GROMOS')
         # compute_correlation_MLS(somora_sel, mls_somora_colloc_conv, freq='1M', pressure_level=[15,20,24], basefolder='/scratch/GROSOM/Level2/GROMORA_waccm/SOMORA')

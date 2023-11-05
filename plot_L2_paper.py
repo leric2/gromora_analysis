@@ -47,19 +47,23 @@ def plot_L2_v3(instrument_name = "GROMOS", date = [datetime.date(2017,1,9)], cyc
     sys.path.insert(0, './GROMORA_harmo/scripts/retrieval/')
 
     if instrument_name=='GROMOS':
-        folder = '/storage/tub/instruments/gromos/level2/GROMORA/v3/'+date.strftime("%Y")+'/'
+        folder = '/storage/tub/instruments/gromos/level2/GROMORA/v2/'+date.strftime("%Y")+'/'
     else:
         folder = '/storage/tub/instruments/somora/level2/v2/'+date.strftime("%Y")+'/'
 
     filename = folder+instrument_name+'_level2_'+spectro+'_'+date.strftime("%Y_%m_%d")+ex+'.nc'
     
     ds = xr.open_dataset(filename)
+
+    for c in cycles:
+        plot_gromora_ds(ds.isel(time=c), spectro=spectro, outname='/scratch/GROSOM/Level2/Diagnostics_v3/'+instrument_name+'_'+spectro+'_'+date.strftime("%Y_%m_%d")+'_'+str(c)+'.pdf', instrument_name=instrument_name)
+
     return ds
 
 
 def plot_L2(instrument_name = "GROMOS", date = [datetime.date(2017,1,9)], cycles=[14], ex = '_waccm_low_alt_dx10_v2'):
     sys.path.insert(0, './GROMORA_harmo/scripts/retrieval/')
-    int_time = date.strftime("%Y_%m_%D")
+    int_time = date[0].strftime("%Y_%m_%D")
 
     integration_strategy = 'classic'
     spectros = ['AC240'] 
@@ -183,7 +187,7 @@ def plot_L2_gromora(date = [datetime.date(2017,1,9)], cycles=[14]):
         extra_base=ex
     )
     
-    outname = plotfolder+'/'+'gromora_L2_'+ gromos_class.datestr + ex + ''
+    outname = plotfolder+'gromora_L2_defense_'+ gromos_class.datestr + ex + ''
     # if instrument_name == 'GROMOS':
     #     outname=plotfolder+'/'+'fig1'
     # elif instrument_name == 'SOMORA':
@@ -220,7 +224,9 @@ def plot_L2_gromora(date = [datetime.date(2017,1,9)], cycles=[14]):
     fwhm=grom.o3_fwhm 
     offset=grom.o3_offset
     o3_p = grom.o3_p
-    mr = grom.o3_mr
+    #mr = grom.o3_mr
+    mr = 1e-2*grom.o3_p.data[grom.o3_mr.data>=0.75]
+
     #error = lvl2[spectro].isel(time=i).o3_eo +  lvl2[spectro].isel(time=i).o3_es
     error_grom = np.sqrt(grom.o3_eo**2 +  grom.o3_es**2)
     error_som = np.sqrt(som.o3_eo**2 +  som.o3_es**2)
@@ -229,8 +235,8 @@ def plot_L2_gromora(date = [datetime.date(2017,1,9)], cycles=[14]):
     y_lab = 'Pressure [hPa] '
     #axs[0].plot( error_grom*to_ppm, y_axis, '--', color=col_gromos)
     #axs[0].plot( error_som*to_ppm,y_axis, '--', color=col_somora)
-    #axs[0].fill_betweenx(y_axis, (o3_grom-error_grom)*to_ppm,(o3_grom+error_grom)*to_ppm, color=col_gromos, alpha=0.5)
-    #axs[0].fill_betweenx(y_axis, (o3_som-error_som)*to_ppm,(o3_som+error_som)*to_ppm, color=col_somora, alpha=0.5)
+    axs[0].fill_betweenx(y_axis, (o3_grom-error_grom)*to_ppm,(o3_grom+error_grom)*to_ppm, color=col_gromos, alpha=0.5)
+    axs[0].fill_betweenx(y_axis, (o3_som-error_som)*to_ppm,(o3_som+error_som)*to_ppm, color=col_somora, alpha=0.5)
     axs[0].plot(o3_grom*to_ppm, y_axis,'-', linewidth=width, label='GROMOS',color=col_gromos)
     axs[0].plot(o3_som*to_ppm, y_axis,'-', linewidth=width, label='SOMORA',color=col_somora)
 
@@ -410,6 +416,10 @@ def plot_L2_gromora(date = [datetime.date(2017,1,9)], cycles=[14]):
     horizontalalignment="left",
     fontsize=fs+8
     )
+
+    for a in axs:
+        a.fill_between(a.get_xlim(),mr[0],1e4, color='gray', alpha=0.2)
+        a.fill_between(a.get_xlim(),mr[-1],1e-4, color='gray', alpha=0.2)
     #fig.suptitle('O$_3$ retrievals: '+pd.to_datetime(grom.time.data).strftime('%Y-%m-%d %H:%M'), fontsize=fs+4)
     fig.tight_layout(rect=[0, 0.01, 1, 0.99])
     fig.savefig(outname+'.pdf')    
@@ -502,31 +512,34 @@ def plot_L2_gromora(date = [datetime.date(2017,1,9)], cycles=[14]):
     fig2.tight_layout(rect=[0, 0.01, 1, 0.99])
     fig2.savefig(outname+'_error.pdf')    
 
-def plot_gromora_ds(gromora, spectro, outname):
+def plot_gromora_ds(gromora, spectro, outname, instrument_name):
     width = 2
-    add_baselines = True
-    fs=22
+    add_baselines = False
+    fs=26
     figure_list = list()
     to_ppm  = 1e6
-    col_gromos = get_color('GROMOS')
+    col_gromos = get_color(instrument_name)
     F0 = 142.175e9
 
     f_backend = np.where(gromora.bad_channels==0,gromora.f.data,  np.nan)
     y = np.where(gromora.bad_channels==0, gromora.y.data, np.nan)# gromora.y.data
     yf = np.where(gromora.bad_channels==0, gromora.yf.data, np.nan)# gromora.yf.data
+    lim1 = np.nanmedian(yf)-5
+    lim2 = np.nanmedian(yf)+20
     bl = np.where(gromora.bad_channels==0, gromora.y_baseline.data, np.nan)# gromora.y_baseline.data 
+    # yf = 0.65*yf + 0.37*np.nanmean(yf)
     r = y - yf
     r = np.where(np.isnan(r), 0, r)
     fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(18,12))
-
-    axs[0].plot((f_backend - F0) / 1e6, y, color=col_gromos, label="observed", alpha=.75)
+   # 
+    axs[0].plot((f_backend - F0) / 1e6, y, color='silver', label="fitted", alpha=1)
     r_smooth = np.convolve(r, np.ones(128) / 128, mode="same")
-    axs[0].plot((f_backend - F0) / 1e6, yf, color='k', label="fitted")
+    axs[0].plot((f_backend - F0) / 1e6, yf, color='k', label="modelled")
     axs[0].set_ylabel("$T_B$ [K]", fontsize=fs)
-    axs[0].set_ylim(np.nanmedian(yf)-20, np.nanmedian(yf)+20)
+    axs[0].set_ylim(lim1, lim2)
     axs[0].set_xlim(-0.5,15)
     axs[0].legend(fontsize=fs)
-    axs[1].plot((f_backend - F0) / 1e6, r, color=col_gromos, label="residuals", alpha=.75)
+    axs[1].plot((f_backend - F0) / 1e6, r, color='silver', label="residuals", alpha=1)
     if spectro != 'FB':
         axs[1].plot((f_backend - F0) / 1e6, r_smooth, color='k', label="residuals smooth")
     if add_baselines:
@@ -539,12 +552,13 @@ def plot_gromora_ds(gromora, spectro, outname):
         ax.grid()
         ax.set_xlim([np.nanmin((f_backend - F0) / 1e6), np.nanmax((f_backend - F0) / 1e6)])
         ax.tick_params(axis='both', which='major', labelsize=fs)
-    fig.suptitle(' O$_3$ spectrum: '+pd.to_datetime(gromora.time.data).strftime('%Y-%m-%d %H:%M'), fontsize=fs+4)
+    axs[0].set_title(instrument_name +' O$_3$ spectrum: '+pd.to_datetime(gromora.time.data).strftime('%Y-%m-%d %H:%M'), fontsize=fs+6)
     fig.tight_layout(rect=[0, 0.03, 1, 0.99])
     figure_list.append(fig)
 
     ###################################################################################
     fig1, axs = plt.subplots(nrows=1, ncols=4, sharey=True, figsize=(28,16))
+    fig_o3, ax_o3 = plt.subplots(nrows=1, ncols=1, sharey=True, figsize=(12,12))
     fs = 28
     o3_grom = gromora.o3_x
     o3_apriori = gromora.o3_xa
@@ -559,7 +573,6 @@ def plot_gromora_ds(gromora, spectro, outname):
     y_lab = 'Pressure [hPa] '
     #axs[0].plot( error_grom*to_ppm, y_axis, '--', color=col_gromos)
     #axs[0].plot( error_som*to_ppm,y_axis, '--', color=col_somora)
-    #axs[0].fill_betweenx(y_axis, (o3_grom-error_grom)*to_ppm,(o3_grom+error_grom)*to_ppm, color=col_gromos, alpha=0.5)
     #axs[0].fill_betweenx(y_axis, (o3_som-error_som)*to_ppm,(o3_som+error_som)*to_ppm, color=col_somora, alpha=0.5)
     axs[0].plot(o3_grom*to_ppm, y_axis,'-', linewidth=width, label='GROMOS',color=col_gromos)
 
@@ -712,7 +725,41 @@ def plot_gromora_ds(gromora, spectro, outname):
     #fig.suptitle('O$_3$ retrievals: '+pd.to_datetime(gromora.time.data).strftime('%Y-%m-%d %H:%M'), fontsize=fs+4)
     fig1.tight_layout(rect=[0, 0.01, 1, 0.99])
     figure_list.append(fig1)
-    #fig.savefig(outname+'.pdf')    
+    #fig.savefig(outname+'.pdf')   
+    # 
+    # 
+    ax_o3.plot(o3_grom*to_ppm, y_axis,'-', linewidth=width, label='retrieved',color='k')
+    ax_o3.fill_betweenx(y_axis, (o3_grom-error_grom)*to_ppm,(o3_grom+error_grom)*to_ppm, color='silver', alpha=1)
+
+    ax_o3.plot(o3_apriori*to_ppm, y_axis, '--', linewidth=1.6, label='apriori', color='k')
+    ax_o3.set_xlim(-0.5,9)
+    ax_o3.set_title("Ozone retrievals", fontsize=fs+2)
+    ax_o3.set_yscale('log')
+    ax_o3.invert_yaxis()
+    ax_o3.set_ylim(500,0.005)
+    ax_o3.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax_o3.set_xlabel('O$_3$ VMR [ppmv]', fontsize=fs)
+    ax_o3.xaxis.set_major_locator(MultipleLocator(4))
+    ax_o3.xaxis.set_minor_locator(MultipleLocator(1))
+    ax_o3.grid(which='both',  axis='x', linewidth=0.5)
+    ax_o3.set_ylabel(y_lab, fontsize=fs)
+    ax_o3.legend(fontsize=fs)
+    # adding altitude axis, thanks Leonie :)
+
+    ax2_o3 = ax_o3.twinx()
+    ax2_o3.set_yticks(gromora.o3_z) #ax2.set_yticks(altitude)
+    ax2_o3.set_ylim(y1z,y2z)
+    ax2_o3.yaxis.set_major_formatter(fmt)
+    ax2_o3.yaxis.set_major_locator(loc)
+    ax2_o3.set_ylabel('Altitude [km] ', fontsize=fs)
+    ax2_o3.tick_params(axis='both', which='major', labelsize=fs)
+
+    ax_o3.grid(which='both', axis='y', linewidth=0.5)
+    ax_o3.grid(which='both', axis='x', linewidth=0.5)
+    ax_o3.tick_params(axis='both', which='major', labelsize=fs)
+
+    fig_o3.tight_layout(rect=[0, 0.01, 1, 0.99])
+    fig_o3.savefig(outname+'o3.pdf')  
 
     ###################################################################################
     fig2, axs2 = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(16,16))
@@ -803,8 +850,10 @@ def plot_gromora_ds(gromora, spectro, outname):
 
 if __name__ == "__main__":
     spectro = 'AC240'
-    instrument_name = "GROMOS"
+    instrument_name = "SOMORA"
     #plot_figures_gromora_paper(do_sensitivity = False, do_L2=True, do_comp=False, do_old=False)
-    gromos = plot_L2_v3(instrument_name, date =datetime.date(2009,10,30), cycles=[5,6,7], ex='_v3', spectro=spectro)
+    plot_L2_gromora(date = [datetime.date(2017,1,9)], cycles=[14])
+    #plot_L2(date = [datetime.date(2017,1,9)], cycles=[14])
+    #gromos = plot_L2_v3(instrument_name, date =datetime.date(2017,1,9), cycles=[1], ex='_v2', spectro=spectro)
 
-    plot_gromora_ds(gromos.isel(time=12), spectro=spectro, outname='/scratch/GROSOM/Level2/Diagnostics_v3/'+instrument_name+'_test_'+spectro+'.pdf')
+    #plot_gromora_ds(gromos.isel(time=21), spectro=spectro, outname='/scratch/GROSOM/Level2/Diagnostics_v3/'+instrument_name+'_test_'+spectro+'.pdf')

@@ -69,7 +69,7 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
     lw=4
     year = pd.to_datetime(gromos_clean.time.values[0]).year
     
-    fig, axs = plt.subplots(1, 2, sharex=False, sharey=True, figsize=(20,16))
+    fig, axs = plt.subplots(1, 2, sharex=False, sharey=True, figsize=(16,18))
 
     temperature_seasonal = gromos_clean.temperature_profile.groupby('time.season').mean()
     temperature_seasonal.sel(season='DJF').plot(
@@ -127,18 +127,18 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
     axs[0].xaxis.set_major_locator(MultipleLocator(20))
     axs[0].xaxis.set_minor_locator(MultipleLocator(10))
     axs[0].set_xlim(180,280)
-    axs[0].text(
-    0.04,
-    0.015,
-    r'\textbf{a)}',
-    transform=axs[0].transAxes,
-    verticalalignment="bottom",
-    horizontalalignment="left",
-    fontsize=fs+2
-    )
+    # axs[0].text(
+    # 0.04,
+    # 0.015,
+    # r'\textbf{a)}',
+    # transform=axs[0].transAxes,
+    # verticalalignment="bottom",
+    # horizontalalignment="left",
+    # fontsize=fs+2
+    # )
 
     axs[0].text(
-    0.64,
+    0.6,
     0.13,
     r'\textbf{Tropopause}',
     transform=axs[0].transAxes,
@@ -158,7 +158,7 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
     )
 
     axs[0].text(
-    0.65,
+    0.62,
     0.95,
     r'\textbf{Mesopause}',
     transform=axs[0].transAxes,
@@ -166,25 +166,25 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
     horizontalalignment="left",
     fontsize=fs-2
     )
-    axs[1].set_title('Ozone', fontsize=fs+4) 
+    axs[1].set_title('Ozone VMR', fontsize=fs+4) 
     axs[1].set_xlabel(r'O$_3$ [ppmv]', fontsize=fs)
     axs[1].set_ylabel('', fontsize=fs)
     axs[1].xaxis.set_major_locator(MultipleLocator(2))
     axs[1].xaxis.set_minor_locator(MultipleLocator(1))
     axs[1].set_xlim(-0.1,10)
 
-    axs[1].text(
-    0.04,
-    0.015,
-    r'\textbf{b)}',
-    transform=axs[1].transAxes,
-    verticalalignment="bottom",
-    horizontalalignment="left",
-    fontsize=fs+2
-    )
+    # axs[1].text(
+    # 0.04,
+    # 0.015,
+    # r'\textbf{b)}',
+    # transform=axs[1].transAxes,
+    # verticalalignment="bottom",
+    # horizontalalignment="left",
+    # fontsize=fs+2
+    # )
 
     axs[1].text(
-    0.55,
+    0.54,
     0.06,
     r'\textbf{Troposphere}',
     transform=axs[1].transAxes,
@@ -195,15 +195,15 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
     axs[1].text(
     0.02,
     0.33,
-    r'\textbf{Stratopshere}',
+    r'\textbf{Stratosphere}',
     transform=axs[1].transAxes,
     verticalalignment="bottom",
     horizontalalignment="left",
     fontsize=fs-2
     )
     axs[1].text(
-    0.55,
-    0.85,
+    0.56,
+    0.7,
     r'\textbf{Mesosphere}',
     transform=axs[1].transAxes,
     verticalalignment="bottom",
@@ -211,9 +211,9 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
     fontsize=fs-2
     )
 
-    axs[0].axhline(y=0.009, xmin=0, xmax=0.62, color='k', linestyle='-.', linewidth=lw-2)
-    axs[0].axhline(1.2 , xmin=0.4, xmax=1,  color='k', linestyle='-.', linewidth=lw-2)
-    axs[0].axhline(150, xmin=0, xmax=0.62, color='k', linestyle='-.', linewidth=lw-2)
+    axs[0].axhline(y=0.009, xmin=0, xmax=0.58, color='k', linestyle='-.', linewidth=lw-2)
+    axs[0].axhline(1.2 , xmin=0.44, xmax=1,  color='k', linestyle='-.', linewidth=lw-2)
+    axs[0].axhline(150, xmin=0, xmax=0.56, color='k', linestyle='-.', linewidth=lw-2)
 
     axs[1].axhline(0.009, color='k', linestyle='-.', linewidth=lw-2)
     axs[1].axhline(1.2, color='k', linestyle='-.', linewidth=lw-2)
@@ -224,9 +224,9 @@ def plot_vertical_structure(gromos_clean, basefolder='/home/esauvageat/Documents
         ax.grid(which='both')
         ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:g}'.format(y)))
     
-    axs[1].legend(fontsize=fs-2, loc='lower left', bbox_to_anchor=(0.56, 0.64))
+    axs[1].legend(fontsize=fs-2, loc='lower left', bbox_to_anchor=(0.4, 0.86))
 
-    plt.tight_layout(rect=[0, 0.01, 0.92, 1])
+    plt.tight_layout(rect=[0, 0, 0.99, 1])
     fig.savefig(basefolder+'vertical_structure.pdf', dpi=500)
 
 
@@ -287,10 +287,15 @@ def plot_jacobian(basefolder='/home/esauvageat/Documents/Thesis/ThesisES/Figures
     # axs[0].xaxis.set_major_locator(MultipleLocator(20))
     # axs[0].xaxis.set_minor_locator(MultipleLocator(10))
     #axs[0].set_xlim(180,280)
-    # sm =  plt.cm.ScalarMappable(cmap=black_cmap)
-    # fig.colorbar(sm)
+    sm =  plt.cm.ScalarMappable(cmap=black_cmap, norm= matplotlib.colors.Normalize(0, 410)) # vmin=-frequency_somora[channels_somora[0]], vmax=-frequency_somora[channels_somora[-5]] 
+    # sm.set_label(r'$\Delta \nu$ [MHz] ')
+    
+    cb = fig.colorbar(sm, ticks= [0, 100, 200, 300, 400], extend='max')
+    cb.set_label(r' f - $142.175$ GHz [MHz]', size=fs)
+    cb.ax.tick_params(labelsize=fs-2)
     for ax in axs:
-        #ax.legend(loc=1)
+        # ax.legend(loc=1)
+        # ax.tick_param(labelsize=fs-2)
         ax.set_ylim(800, 1e-2)
         ax.set_xlim(-0.005, 0.175)
         ax.grid(which='both')
@@ -299,8 +304,8 @@ def plot_jacobian(basefolder='/home/esauvageat/Documents/Thesis/ThesisES/Figures
     
     #axs[1].legend(fontsize=fs-2, loc='lower left', bbox_to_anchor=(0.56, 0.64))
 
-    plt.tight_layout(rect=[0, 0.01, 0.92, 1])
-    fig.savefig(basefolder+'Jacobians.pdf', dpi=500)
+    plt.tight_layout(rect=[0, 0.01, 0.99, 1])
+    fig.savefig(basefolder+'Jacobians_test.pdf', dpi=500)
 
     plot_altitudes = np.arange(8,47,2)
 
@@ -465,7 +470,7 @@ if __name__ == "__main__":
     fold_gromos = '/storage/tub/instruments/gromos/level2/GROMORA/v3/'# #'/scratch/GROSOM/Level2/GROMOS/v2/'
     fold_gromos2 = '/storage/tub/instruments/gromos/level2/GROMORA/v3/' # '/scratch/GROSOM/Level2/GROMOS/v3/'
     prefix_FFT='_AC240_v3'
-    basefolder='/home/esauvageat/Documents/Thesis/ThesisES/Figures/'
+    basefolder='/home/esauvageat/Documents/Thesis/Defense_ES/figs/'#ThesisES/Figures/'
     ########################################################################################################
     # Different strategies can be chosen for the analysis:
     # 'read': default option which reads the full level 2 doing the desired analysis
@@ -533,16 +538,16 @@ if __name__ == "__main__":
         somora_clean = read_GROMORA_concatenated('/scratch/GROSOM/Level2/SOMORA_level3_6H_v2.nc', date_slice)
 
 
-    plot_vertical_struct=False
+    plot_vertical_struct=True
     if plot_vertical_struct:
-        plot_vertical_structure(gromos_clean)
+        plot_vertical_structure(gromos_clean, basefolder)
 
     plot_jac=False
     if plot_jac:
         plot_jacobian()
         plot_contribution()
 
-    plot_line_shape=True
+    plot_line_shape=False
     if plot_line_shape:
         fs = 18
         lw=2

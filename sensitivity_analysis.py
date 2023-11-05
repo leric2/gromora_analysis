@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+from datetime import date
 import os
 
 import matplotlib.pyplot as plt
@@ -282,7 +283,8 @@ def plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora, param, outnam
     ozone_somora = 1e6*sensi_ds_somora.o3_x#.isel(o3_lat=0, o3_lon=0)
     eo_gromos = 1e6*sensi_ds_gromos.o3_eo.isel(param=0)
     eo_somora = 1e6*sensi_ds_somora.o3_eo.isel(param=0)
-
+    ref_diff_eo_gromos = 100*eo_gromos/ozone_gromos.isel(param=0)
+    ref_diff_eo_somora = 100*eo_somora/ozone_somora.isel(param=0)
     # color_shading = 'grey'
     # error_retrieval = 1e6*np.sqrt(sensi_ds.o3_eo**2 + sensi_ds.o3_es**2).isel(param=0)
 
@@ -316,7 +318,11 @@ def plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora, param, outnam
         if (pa == 'continuum') or (pa == 'spectroscopy'):    
             if (pa == 'spectroscopy'):
                 spectro_cont_error_gromos= np.fabs(ozone_gromos.isel(param=5)- ozone_gromos.isel(param=0)) + np.fabs(ozone_gromos.isel(param=6)  - ozone_gromos.isel(param=0))
+                spectro_cont_error_gromos= spectro_cont_error_gromos/ozone_gromos.isel(param=0)
+
                 spectro_cont_error_somora= np.fabs(ozone_somora.isel(param=5)- ozone_somora.isel(param=0)) + np.fabs(ozone_somora.isel(param=6)  - ozone_somora.isel(param=0))
+                spectro_cont_error_somora= spectro_cont_error_somora/ozone_somora.isel(param=0)
+
                 spectro_cont_error_gromos.plot(
                     y='o3_p', ax=axs[1], color='k',lw=0, marker=symbols[i] , label='spectroscopy')
                 spectro_cont_error_somora.plot(
@@ -325,12 +331,13 @@ def plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora, param, outnam
         else:
             diff_gromos = np.fabs(ozone_gromos.isel(param=0)-ozone_gromos.isel(param=param[pa]))
             diff_somora = np.fabs(ozone_somora.isel(param=0)-ozone_somora.isel(param=param[pa]))
-            #rel_diff = 100*diff/ozone.isel(param=0)
+            rel_diff_gromos = 100*diff_gromos/ozone_gromos.isel(param=0)
+            rel_diff_somora = 100*diff_somora/ozone_somora.isel(param=0)
 
             ######################### 
-            diff_gromos.plot(
+            rel_diff_gromos.plot(
                 y='o3_p', ax=axs[1], color='k',lw=0, marker=symbols[i] , label=ERROR_NAMES[pa])
-            diff_somora.plot(
+            rel_diff_somora.plot(
                 y='o3_p', ax=axs[2], color='k',lw=0, marker=symbols[i] , label=ERROR_NAMES[pa])
 
             legend_elements.append(Line2D([0], [0], marker=symbols[i], color='w',markerfacecolor='k',markersize=10, label=ERROR_NAMES[pa]))
@@ -353,14 +360,14 @@ def plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora, param, outnam
 
     # total_error.plot(
     #     y='o3_p', ax=axs[1], color='red', lw=1, label='total')
-    eo_gromos.plot(
+    ref_diff_eo_gromos.plot(
         y='o3_p', ax=axs[1], color='k', lw=0, marker='X', label='measurement error')
-    eo_somora.plot(
+    ref_diff_eo_somora.plot(
         y='o3_p', ax=axs[2], color='k', lw=0, marker='X', label='measurement error')
-    axs[1].xaxis.set_minor_locator(MultipleLocator(0.05))
-    axs[1].xaxis.set_major_locator(MultipleLocator(0.1))
-    axs[2].xaxis.set_minor_locator(MultipleLocator(0.05))
-    axs[2].xaxis.set_major_locator(MultipleLocator(0.1))
+    # axs[1].xaxis.set_minor_locator(MultipleLocator(0.05))
+    # axs[1].xaxis.set_major_locator(MultipleLocator(0.1))
+    # axs[2].xaxis.set_minor_locator(MultipleLocator(0.05))
+    # axs[2].xaxis.set_major_locator(MultipleLocator(0.1))
 
     axs[0].fill_betweenx(ozone_gromos.o3_p, (ozone_gromos.isel(param=0)-eo_gromos),(ozone_gromos.isel(param=0)+eo_gromos), color=color_gromos, alpha=0.3)
     axs[0].fill_betweenx(ozone_somora.o3_p, (ozone_somora.isel(param=0)-eo_somora),(ozone_somora.isel(param=0)+eo_somora), color=color_somora, alpha=0.3)
@@ -385,8 +392,8 @@ def plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora, param, outnam
     axs[2].set_xlabel(r'$\Delta $O$_3$ VMR [ppmv]', fontsize=fs)
     axs[1].set_ylabel('', fontsize=fs)
     axs[2].set_ylabel('', fontsize=fs)
-    axs[1].set_xlim(-0.01, 0.5)
-    axs[2].set_xlim(-0.01, 0.5)
+    axs[1].set_xlim(-0.01, 20)
+    axs[2].set_xlim(-0.01, 20)
 
     axs[1].set_title('GROMOS')
     axs[2].set_title('SOMORA')
@@ -415,7 +422,7 @@ def plot_sensi_fig_gromora_paper(instrument_name = 'GROMOS'):
     #     outN1 = 'fig6.pdf'
     #     outN2 = 'figA2.pdf'
     folder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v3/'    
-    outfolder = '/scratch/GROSOM/Level2/GROMORA_paper_plots/'
+    outfolder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v3/' # '/scratch/GROSOM/Level2/GROMORA_paper_plots/'
     specific_fnames = [
         'sensitivity_test_og.nc',
         'sensitivity_test_angle.nc',
@@ -438,53 +445,56 @@ def plot_sensi_fig_gromora_paper(instrument_name = 'GROMOS'):
     if instrument_name=='both':
         #######################################################################################
         # Low opacity case:
-        date = datetime.date(2018, 2, 26)
-        basename_gromos = 'GROMOS_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+        date_a = date(2018, 2, 26)
+        basename_gromos = 'GROMOS_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
         sensi_ds_gromos = read_sensitivity( folder, basename_gromos, specific_fnames = specific_fnames)
         sensi_ds_gromos=sensi_ds_gromos.isel(time=0, o3_lon=0, o3_lat=0).drop_vars(['time','o3_lon', 'o3_lat'])
-        basename_somora = 'SOMORA_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+        basename_somora = 'SOMORA_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
         sensi_ds_somora = read_sensitivity( folder, basename_somora, specific_fnames = specific_fnames)
         sensi_ds_somora=sensi_ds_somora.isel(time=0, o3_lon=0, o3_lat=0).drop_vars(['time','o3_lon', 'o3_lat'])
         
-        plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora,param=param_names, outname=outfolder+'combined_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'_plots.pdf')
+        plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora,param=param_names, outname=outfolder+'combined_sensitivity_test_v2_'+ date_a.strftime('%Y_%m_%d')+'_plots.pdf')
         
         #######################################################################################
         # High opacity case:
-        date = datetime.date(2018, 6, 9)
+        date_a = date(2018, 6, 9)
 
-        basename_gromos = 'GROMOS_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+        basename_gromos = 'GROMOS_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
         sensi_ds_gromos = read_sensitivity( folder, basename_gromos, specific_fnames = specific_fnames)
         sensi_ds_gromos=sensi_ds_gromos.isel(time=0, o3_lon=0, o3_lat=0).drop_vars(['time','o3_lon', 'o3_lat'])
-        basename_somora = 'SOMORA_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+        basename_somora = 'SOMORA_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
         sensi_ds_somora = read_sensitivity( folder, basename_somora, specific_fnames = specific_fnames)
         sensi_ds_somora=sensi_ds_somora.isel(time=0, o3_lon=0, o3_lat=0).drop_vars(['time','o3_lon', 'o3_lat'])
         
-        plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora,param=param_names, outname=outfolder+'combined_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'_plots.pdf')
+        plot_uncertainty_budget_both(sensi_ds_gromos, sensi_ds_somora,param=param_names, outname=outfolder+'combined_sensitivity_test_v2_'+ date_a.strftime('%Y_%m_%d')+'_plots.pdf')
     else:
         #######################################################################################
         # Low opacity case:
-        date = datetime.date(2018, 2, 26)
-        basename = instrument_name + '_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+        date_a = date(2018, 2, 26)
+        basename = instrument_name + '_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
         sensi_ds = read_sensitivity( folder, basename, specific_fnames = specific_fnames)
         sensi_ds=sensi_ds.isel(time=0, o3_lon=0, o3_lat=0).drop_vars(['time','o3_lon', 'o3_lat'])
-        plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=outfolder+instrument_name+'_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'_plots.pdf')
+        plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=outfolder+instrument_name+'_sensitivity_test_v2_'+ date_a.strftime('%Y_%m_%d')+'_plots.pdf')
 
         #######################################################################################
         # High opacity case:
-        date = datetime.date(2018, 6, 9)
+        date_a = date(2018, 6, 9)
 
         #######################################
-        basename = instrument_name + '_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+        basename = instrument_name + '_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
         sensi_ds = read_sensitivity( folder, basename, specific_fnames = specific_fnames)
         sensi_ds=sensi_ds.isel(time=0, o3_lon=0, o3_lat=0).drop_vars(['time','o3_lon', 'o3_lat'])
-        plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=outfolder+instrument_name+'_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'_plots.pdf')
+        plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=outfolder+instrument_name+'_sensitivity_test_v2_'+ date_a.strftime('%Y_%m_%d')+'_plots.pdf')
     
 if __name__ == "__main__":
-    #date = datetime.date(2018, 2, 26)
-    date = datetime.date(2018, 6, 9)
+    date_a = date(2018, 2, 26)
+
+    plot_sensi_fig_gromora_paper(instrument_name = 'both')
+
+    # date = datetime.date(2018, 6, 9)
     folder =  '/scratch/GROSOM/Level2/GROMORA_sensitivity/v3/'
-    instrument_name = 'SOMORA'
-    basename = instrument_name + '_level2_AC240_' + date.strftime('%Y_%m_%d') + '_'
+    instrument_name = 'GROMOS'
+    basename = instrument_name + '_level2_AC240_' + date_a.strftime('%Y_%m_%d') + '_'
    # GROMOS_level2_AC240_2018_02_26_sensitivity_test_og.nc
     specific_fnames = [
         'sensitivity_test_og.nc',
@@ -508,5 +518,5 @@ if __name__ == "__main__":
         'continuum':6,
         'sideband':7,
     } 
-    compare_sensi(sensi_ds, param=param_names, outname=folder+instrument_name+'_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'.pdf')
-    plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=folder+instrument_name+'_sensitivity_test_v2_'+ date.strftime('%Y_%m_%d')+'_plots.pdf')
+    compare_sensi(sensi_ds, param=param_names, outname=folder+instrument_name+'_sensitivity_test_v2_'+ date_a.strftime('%Y_%m_%d')+'.pdf')
+    plot_uncertainty_budget(instrument_name, sensi_ds,param=param_names, outname=folder+instrument_name+'_sensitivity_test_v2_'+ date_a.strftime('%Y_%m_%d')+'_plots.pdf')
