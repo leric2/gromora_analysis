@@ -24,6 +24,7 @@ from numpy.lib.shape_base import dsplit
 import pandas as pd
 from scipy.odr.odrpack import RealData
 from scipy.stats.stats import RepeatedResults
+from scipy.io import loadmat
 import typhon
 
 import xarray as xr
@@ -119,7 +120,7 @@ def read_GROMORA_all(basefolder, instrument_name, date_slice, years, prefix):
 def read_gromos_v2021(filename, date_slice):
     basename = '/home/esauvageat/Documents/GROMORA/Data/'
     full_name = os.path.join(basename, filename)
-    v2021 = scipy.io.loadmat(full_name)
+    v2021 = loadmat(full_name)
 
     datenum = v2021['time'][0,:]
    
@@ -151,7 +152,7 @@ def read_gromos_v2021(filename, date_slice):
 def read_gromos_old_FB(filename, date_slice):
     basename = '/home/esauvageat/Documents/GROMORA/Data/'
     full_name = os.path.join(basename, filename)
-    v2021 = scipy.io.loadmat(full_name)
+    v2021 = loadmat(full_name)
 
     datenum = v2021['time'][0,:]
    
@@ -199,7 +200,7 @@ def read_old_SOMORA(filename, date_slice):
 def read_old_GROMOA_diff(filename, date_slice):
     basename = '/home/esauvageat/Documents/GROMORA/Data/'
     full_name = os.path.join(basename, filename)
-    diff = scipy.io.loadmat(full_name)
+    diff = loadmat(full_name)
 
     datenum = diff['DIFF_G'][:,0]
     altitude = diff['DIFF_G'][0:30,3]
