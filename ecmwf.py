@@ -192,9 +192,9 @@ def read_ERA5(date, years=[2017], location='SwissPlateau', daybyday=False, save=
         ecmwf_ts = ecmwf_ts.isel(loc=0)
         ecmwf_ts['pressure'] = ecmwf_ts['pressure']/100
         if save:
-            ecmwf_ts.to_netcdf('/scratch/GROSOM/DiurnalCycles/climatology/era5_switzerland_'+d.strftime('%Y')+'.nc')
+            ecmwf_ts.to_netcdf('/scratch/ECMWF/ERA5/era5_switzerland_'+d.strftime('%Y')+'.nc')
     else:
-        ECMWF_folder = '/scratch/GROSOM/DiurnalCycles/climatology/'
+        ECMWF_folder = '/scratch/ECMWF/ERA5/'
         counter = 0
         for year in years:
             ECMWF_file = os.path.join(
