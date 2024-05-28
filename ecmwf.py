@@ -133,7 +133,7 @@ def mmr_2_vmr(mmr):
     
 
 def read_ECMWF(date, location='BERN'):
-    ECMWF_folder = '/storage/tub/atmosphere/ecmwf/locations/Bern/'
+    ECMWF_folder = '/storage/atmosphere/atmosphere/ecmwf/locations/Bern/'
     counter = 0
     for d in date:
         ECMWF_file = os.path.join(
@@ -166,7 +166,7 @@ def read_ECMWF(date, location='BERN'):
 def read_ERA5(date, years=[2017], location='SwissPlateau', daybyday=False, save=False):
    
     if daybyday:
-        ECMWF_folder = '/storage/tub/atmosphere/ecmwf/locations/SwissPlateau/'
+        ECMWF_folder = '/storage/atmosphere/atmosphere/ecmwf/locations/SwissPlateau/'
         counter = 0
         for d in date:
             ECMWF_file = os.path.join(
@@ -227,7 +227,7 @@ def pressure_levels_global(lnsp):
     return a + b * sp
 
 def read_ECMWF_global(date):
-    ECMWF_folder = '/storage/tub/atmosphere/ecmwf/oper/'
+    ECMWF_folder = '/storage/atmosphere/atmosphere/ecmwf/oper/'
     year = date.year
     ECMWF_file = os.path.join(ECMWF_folder+str(year), 'ECMWF_OPER_v2_'+date.strftime('%Y%m%d')+'.nc')
 
@@ -255,7 +255,7 @@ def read_ECMWF_global(date):
     return ecmwf_og
 
 def read_ERA5_global(date):
-    ECMWF_folder = '/storage/tub/atmosphere/ecmwf/era5/europe/'
+    ECMWF_folder = '/storage/atmosphere/atmosphere/ecmwf/era5/europe/'
     year = date.year
     ECMWF_file = os.path.join(ECMWF_folder+str(year), 'ECMWF_ERA5_'+date.strftime('%Y%m%d')+'.nc')
 
@@ -438,7 +438,7 @@ def extract_date(date, p_level = 10, zoom=None, ERA5=True, extra = ''):
 
 def plot_date(date, p_levels = [10], square =True, polar = False, zoom=None, extra = ''):
     basefolder = '/home/esauvageat/Documents/ECMWF/plots/'
-    basefolder = '/storage/tub/atmosphere/ecmwf/daily_plots/'+str(date.year)+'/'
+    basefolder = '/storage/atmosphere/atmosphere/ecmwf/daily_plots/'+str(date.year)+'/'
     #ecmwf_ds = read_ECMWF( date, 'Bern')
 
     #variable = ['t', 'u', 'v', 'o3', 'q','vo'] # Options are t, q, w, vo, o3, z, u, v
