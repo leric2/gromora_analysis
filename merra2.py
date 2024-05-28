@@ -36,7 +36,7 @@ color_shading = 'grey'
 
 def read_merra2_BRN(years = [2017], months = [10]):
 
-    merra2_basename = '/storage/tub/atmosphere/MERRA2/BRN/'
+    merra2_basename = '/storage/atmosphere/atmosphere/MERRA2/BRN/'
     filename_merra2 = []
     for y in years:
         #print(y)
