@@ -269,14 +269,14 @@ if __name__ == "__main__":
     if instrument == 'GROMOS':
         instNameGROMOS = 'GROMOS'
         pref = 'GROMOS_'+str(yr)+'_12_31'
-        folder =  '/storage/tub/instruments/gromos/level2/GROMORA/v3/'
+        folder =  '/storage/atmosphere/instruments/gromos/level2/GROMORA/v3/'
         # folder =  '/scratch/GROSOM/Level2/GROMORA_waccm/'
         freq_basename = '/scratch/GROSOM/Level1/frequency_grid_GROMOS.nc'
 
         prefix= '_v3_residuals.nc'
     elif instrument == 'SOMORA':
         pref = 'SOMORA_'+str(yr)+'_12_31'
-        folder ='/storage/tub/instruments/somora/level2/v2/'
+        folder ='/storage/atmosphere/instruments/somora/level2/v2/'
         # folder =  '/scratch/GROSOM/Level2/GROMORA_waccm/'
         freq_basename = '/scratch/GROSOM/Level1/frequency_grid_SOMORA.nc'
         prefix= '_res_residuals.nc'
