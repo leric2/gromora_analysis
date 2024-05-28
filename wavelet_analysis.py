@@ -175,13 +175,13 @@ if __name__ == "__main__":
     if instrument == 'GROMOS':
         instNameGROMOS = 'GROMOS'
         instNameSOMORA = 'GROMOS'
-        fold_somora = '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
-        fold_gromos =  '/storage/tub/instruments/gromos/level2/GROMORA/v1/'
+        fold_somora = '/storage/atmosphere/instruments/gromos/level2/GROMORA/v1/'
+        fold_gromos =  '/storage/atmosphere/instruments/gromos/level2/GROMORA/v1/'
     elif instrument == 'SOMORA':
         instNameGROMOS = 'SOMORA'
         instNameSOMORA = 'SOMORA'
-        fold_somora ='/storage/tub/instruments/somora/level2/v1/'
-        fold_gromos ='/storage/tub/instruments/somora/level2/v1/'
+        fold_somora ='/storage/atmosphere/instruments/somora/level2/v1/'
+        fold_gromos ='/storage/atmosphere/instruments/somora/level2/v1/'
     else:
         instNameGROMOS = 'GROMOS'
         instNameSOMORA = 'SOMORA'
