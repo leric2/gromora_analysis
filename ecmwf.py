@@ -115,7 +115,7 @@ geopotential = {
 
 
 def read_ECMWF(date, location='BERN'):
-    ECMWF_folder = '/storage/tub/instruments/gromos/ECMWF_Bern/'
+    ECMWF_folder = '/storage/atmosphere/atmosphere/ecmwf/locations/Bern/'
     counter = 0
     for d in date:
         ECMWF_file = os.path.join(
@@ -153,7 +153,7 @@ def pressure_levels_global(lnsp):
     return a + b * sp
 
 def read_ECMWF_global(date):
-    ECMWF_folder = '/storage/tub/atmosphere/ecmwf/oper/'
+    ECMWF_folder = '/storage/atmosphere/atmosphere/ecmwf/oper/'
     year = date.year
     ECMWF_file = os.path.join(ECMWF_folder+str(year), 'ECMWF_OPER_v2_'+date.strftime('%Y%m%d')+'.nc')
 
@@ -298,7 +298,7 @@ def plot_ts(ts, ax, var, polar):
 if __name__ == "__main__":
     #date = pd.date_range(start='2019-03-03', end='2019-03-03')
 
-    basefolder = '/storage/tub/atmosphere/ecmwf/daily_plots/'
+    basefolder = '/storage/atmosphere/atmosphere/ecmwf/daily_plots/'
     #ecmwf_ds = read_ECMWF( date, 'Bern')
 
     #variable = ['t', 'u', 'v', 'o3', 'q','vo'] # Options are t, q, w, vo, o3, z, u, v
@@ -308,6 +308,9 @@ if __name__ == "__main__":
     date = datetime.datetime.now()-datetime.timedelta(2)
     datestr = date.strftime('%Y-%m-%d')
     ecmwf_global = read_ECMWF_global(date)
+
+    # yearly output folder is not created automatically on the storage mount
+    os.makedirs(os.path.join(basefolder, str(date.year)), exist_ok=True)
 
     p_levels = [100, 10, 1]
 
